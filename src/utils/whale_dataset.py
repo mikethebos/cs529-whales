@@ -23,8 +23,10 @@ class WhaleDataset(Dataset):
         """
         self.img_dir = images_dir
         self.df = pd.read_csv(csv_file)
+        cats = self.df["Id"].astype("category").cat
         # map unique str labels to unique int id
-        self.int_labels = self.df["Id"].astype("category").cat.codes
+        self.int_labels = cats.codes
+        self.cat_labels = cats.categories
 
     def __len__(self):
         return len(self.df)
@@ -48,3 +50,4 @@ if __name__ == "__main__":
     img, img_label = ds[0]
     print(img_label)
     plot_img(img)
+    print("verify cat_label ", ds.cat_labels[img_label])
