@@ -3,7 +3,10 @@ from torchvision import transforms
 
 from PIL import Image
 
-def get_min_wh(ds: Dataset) -> tuple:
+def get_min_hw(ds: Dataset) -> tuple:
+    """
+    Get min
+    """
     mapped = []
     img = False
     if type(ds[0][0]) == Image:
@@ -14,11 +17,11 @@ def get_min_wh(ds: Dataset) -> tuple:
         else:
             mapped.append(ds[i][0].shape[1:])
             
-    w = min(map(lambda x: x[0], mapped))
-    h = min(map(lambda x: x[1], mapped))
-    return w, h
+    h = min(map(lambda x: x[0], mapped))
+    w = min(map(lambda x: x[1], mapped))
+    return h, w
 
-def get_max_wh(ds: Dataset) -> tuple:
+def get_max_hw(ds: Dataset) -> tuple:
     mapped = []
     img = False
     if type(ds[0][0]) == Image:
@@ -29,12 +32,12 @@ def get_max_wh(ds: Dataset) -> tuple:
         else:
             mapped.append(ds[i][0].shape[1:])
             
-    w = max(map(lambda x: x[0], mapped))
-    h = max(map(lambda x: x[1], mapped))
-    return w, h
+    h = max(map(lambda x: x[0], mapped))
+    w = max(map(lambda x: x[1], mapped))
+    return h, w
 
 if __name__ == "__main__":
     from whale_dataset import WhaleDataset
     ds = WhaleDataset("../../data/train", "../../data/train.csv")
-    print(get_min_wh(ds))
-    print(get_max_wh(ds))
+    print(get_min_hw(ds))
+    print(get_max_hw(ds))
