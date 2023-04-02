@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import torch
 from torch.utils.data import random_split, DataLoader
 import torch.nn as nn
@@ -21,6 +23,8 @@ def initial_network():
     torch.manual_seed(333)
     trainloader = DataLoader(dstrain, batch_size=16, shuffle=True, num_workers=4)
     valloader = DataLoader(dsval, batch_size=16, shuffle=True, num_workers=4)
+    
+    trainloader_for_eval = deepcopy(trainloader)
 
     net = BasicCNN(max_h, max_w).cuda()
     net.train()
@@ -37,9 +41,10 @@ def initial_network():
         correct = 0
         total = 0
         loss_tot = 0.0
+        dl = dataloader
         
         with torch.no_grad():
-            for chunk in dataloader:
+            for chunk in dl:
                 inputs, labels = chunk[0].cuda(), chunk[1].cuda()
                 outputs = net(inputs)
                 loss = loss_fcn(outputs, labels)
@@ -51,7 +56,7 @@ def initial_network():
         acc = correct / total
         if acc_only:
             return acc
-        return loss_tot / len(dataloader), acc
+        return loss_tot / len(dl), acc
     
     for epoch in range(100):
         running_train_loss = 0.0
@@ -70,7 +75,7 @@ def initial_network():
             if step % 50 == 49:
                 net.eval()
                 val_loss, val_acc = test(valloader)
-                train_acc = test(trainloader, acc_only=True)
+                train_acc = test(trainloader_for_eval, acc_only=True)
                 net.train()
                 print(f'[{epoch + 1}, {step + 1:5d}] running train loss: {running_train_loss / 50.0:.6f}, train acc {train_acc:.6f}, val loss: {val_loss:.6f}, val acc: {val_acc:.6f}')
                 train_losses.append(running_train_loss / 50.0)
