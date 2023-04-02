@@ -6,8 +6,9 @@ using PyTorch Dataset.
 """
 import matplotlib.pyplot as plt  # temporary
 
+import torch
 from torch.utils.data import Dataset
-from torchvision.io import read_image
+from torchvision.io import read_image, ImageReadMode
 import pandas as pd
 import os
 
@@ -36,11 +37,12 @@ class WhaleDataset(Dataset):
     def __getitem__(self, idx):
         img_fname = self.df["Image"].iloc[idx]
         img_path = os.path.join(self.img_dir, img_fname)
-        image = read_image(img_path)
+        # force into RGB to make Grayscale transform work
+        image = read_image(img_path, ImageReadMode.RGB)
         label = self.int_labels.iloc[idx]
         if self.transform is not None:
             image = self.transform(image)
-        return image, label
+        return image.float(), torch.tensor(label).long()
     
     def get_cat_for_label(self, int_label):
         return self.int_label_to_cat[int_label]
@@ -57,4 +59,5 @@ if __name__ == "__main__":
     img, img_label = ds[0]
     print(img_label)
     print("verify cat_label ", ds.get_cat_for_label(img_label))
-    plot_img(img)
+    # plot_img(img)
+    print("# of classes:  ", len(set(ds.df["Id"])))
