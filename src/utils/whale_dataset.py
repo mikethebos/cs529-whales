@@ -43,9 +43,34 @@ class WhaleDataset(Dataset):
         if self.transform is not None:
             image = self.transform(image)
         return image.float(), torch.tensor(label).long()
-    
+
     def get_cat_for_label(self, int_label):
         return self.int_label_to_cat[int_label]
+
+
+class TestWhaleDataset(Dataset):
+    def __init__(self, images_dir: str, transform=None):
+        """
+        Initialize test dataset (data with no labels).
+        :param images_dir: str, path to image directory
+        :param transform, a callable to apply to each image tensor
+        :return: None
+        """
+        self.img_dir = images_dir
+        self.images = os.listdir(images_dir)
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        img_fname = self.images[idx]
+        img_path = os.path.join(self.img_dir, img_fname)
+        # force into RGB to make Grayscale transform work
+        image = read_image(img_path, ImageReadMode.RGB)
+        if self.transform is not None:
+            image = self.transform(image)
+        return image.float()
 
 
 def plot_img(image):
@@ -54,10 +79,6 @@ def plot_img(image):
 
 
 if __name__ == "__main__":
-    ds = WhaleDataset("../../data/train", "../../data/train.csv")
-    print(len(ds.df[ds.df["Id"] == 'new_whale']))  # decent number of new whales
-    img, img_label = ds[0]
-    print(img_label)
-    print("verify cat_label ", ds.get_cat_for_label(img_label))
-    # plot_img(img)
-    print("# of classes:  ", len(set(ds.df["Id"])))
+    test_ds = TestWhaleDataset("../../data/test")
+    img = test_ds[0]
+    plot_img(img)
