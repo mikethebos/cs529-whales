@@ -5,6 +5,8 @@ from torch.utils.data import random_split, DataLoader
 import torch.nn as nn
 import torch.optim as optim
 
+from torchvision import transforms as tv_transforms
+
 from utils.whale_dataset import *
 from utils.transforms import *
 from models import *
@@ -24,6 +26,10 @@ def initial_network():
     trainloader = DataLoader(dstrain, batch_size=16, shuffle=True, num_workers=4)
     valloader = DataLoader(dsval, batch_size=16, shuffle=True, num_workers=4)
     
+    means, devs = get_mean_std_of_channels(trainloader, channels=1)
+    dstrain.dataset.transform = tv_transforms.Compose([dstrain.dataset.transform, tv_transforms.Normalize(means, devs)])
+    dsval.dataset.transform = tv_transforms.Compose([dsval.dataset.transform, tv_transforms.Normalize(means, devs)])
+    
     trainloader_for_eval = deepcopy(trainloader)
 
     net = BasicCNN(max_h, max_w).cuda()
@@ -32,6 +38,7 @@ def initial_network():
     loss_fcn = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
     
+    steps = [] 
     train_losses = []
     train_accs = []
     val_losses = []
@@ -58,6 +65,8 @@ def initial_network():
             return acc
         return loss_tot / len(dl), acc
     
+    total_step = 0
+    
     for epoch in range(100):
         running_train_loss = 0.0
         for step, data in enumerate(trainloader, 0):
@@ -82,21 +91,21 @@ def initial_network():
                 val_losses.append(val_loss)
                 train_accs.append(train_acc)
                 val_accs.append(val_acc)
+                steps.append(total_step + 1)
                 running_train_loss = 0.0
                 train_acc = 0.0
                 val_loss = 0.0
                 val_acc = 0.0
                 
-    return train_losses, val_losses, train_accs, val_accs
+            total_step = total_step + 1
+                
+    return steps, train_losses, val_losses, train_accs, val_accs
 
 if __name__ == "__main__":
     # cudnn not supported on cs machines (at least phobos)
     torch.backends.cudnn.enabled = False
 
-    train_losses, val_losses, train_accs, val_accs = initial_network()
-    
-    import numpy as np
-    steps = np.arange(1, len(train_losses) + 1, 1, dtype=np.int64)
+    steps, train_losses, val_losses, train_accs, val_accs = initial_network()
     
     import matplotlib.pyplot as plt
     
@@ -104,8 +113,8 @@ if __name__ == "__main__":
     os.makedirs("../results", exist_ok=True)
     
     plt.figure(figsize=(9, 9))
-    plt.plot(steps, train_losses, label="train (running avg)")
-    plt.plot(steps, val_losses, label="val")
+    plt.loglog(steps, train_losses, label="train (running avg)")
+    plt.loglog(steps, val_losses, label="val")
     plt.legend()
     plt.title("Whale Model Loss:  Initial Network")
     plt.ylabel("Loss")
@@ -113,8 +122,8 @@ if __name__ == "__main__":
     plt.savefig("../results/initial_network_loss.png", dpi=350)
     
     plt.figure(figsize=(9, 9))
-    plt.plot(steps, train_accs, label="train")
-    plt.plot(steps, val_accs, label="val")
+    plt.loglog(steps, train_accs, label="train")
+    plt.loglog(steps, val_accs, label="val")
     plt.legend()
     plt.title("Whale Model Accuracy:  Initial Network")
     plt.ylabel("Accuracy")

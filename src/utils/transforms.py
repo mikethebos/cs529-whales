@@ -1,4 +1,7 @@
-from torch.utils.data import Dataset
+import numpy as np
+
+import torch
+from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
 from PIL import Image
@@ -79,8 +82,31 @@ def get_max_hw(ds: Dataset) -> tuple:
     w = max(map(lambda x: x[1], mapped))
     return h, w
 
+def get_mean_std_of_channels(dl: DataLoader, channels=1) -> tuple:
+    means = []
+    devs = []
+    
+    # get tensor of data; inspired by https://stackoverflow.com/a/74783382
+    for ch in range(channels):
+        means_for_ch = []
+        means_sq = []
+        for data in dl:
+            imgs = data[0].cpu().numpy()
+            means_for_ch.append(np.mean(imgs[:,ch,:,:]))
+            means_sq.append(np.mean(imgs[:,ch,:,:] ** 2.0))
+        means.append(np.mean(means_for_ch))
+        devs.append(np.sqrt(np.mean(means_sq) - (means[-1] ** 2.0)))
+    
+    return means, devs
+
 if __name__ == "__main__":
     from whale_dataset import WhaleDataset
     ds = WhaleDataset("../../data/train", "../../data/train.csv")
     print(get_min_hw(ds))
     print(get_max_hw(ds))
+    
+    h, w = get_max_hw(ds)
+    ds.transform = basic_transform(h, w, upscale=True)
+    dl = DataLoader(ds, batch_size=16)
+    means, devs = get_mean_std_of_channels(dl, channels=1)
+    print("Means: ", means, ", devs: ", devs)
