@@ -27,8 +27,8 @@ def initial_network():
     valloader = DataLoader(dsval, batch_size=16, shuffle=True, num_workers=4)
     
     means, devs = get_mean_std_of_channels(trainloader, channels=1)
-    dstrain.dataset.transform = tv_transforms.Compose([dstrain.dataset.transform, tv_transforms.Normalize(means, devs)])
-    dsval.dataset.transform = tv_transforms.Compose([dsval.dataset.transform, tv_transforms.Normalize(means, devs)])
+    dstrain.dataset.transform = tv_transforms.Compose([dstrain.dataset.transform, lambda x: x.float(), tv_transforms.Normalize(means, devs)])
+    dsval.dataset.transform = tv_transforms.Compose([dsval.dataset.transform, lambda x: x.float(), tv_transforms.Normalize(means, devs)])
     
     trainloader_for_eval = deepcopy(trainloader)
 
