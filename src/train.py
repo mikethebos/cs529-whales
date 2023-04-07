@@ -147,6 +147,7 @@ def train(model: nn.Module, dataset: Dataset, params: dict, weights_path: str):
     else:
         device = "cpu"
     print("Using device:", device)
+    model.to(device)
 
     # set seed for reproducibility
     torch.manual_seed(42)
