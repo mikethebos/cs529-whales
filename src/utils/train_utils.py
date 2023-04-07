@@ -27,10 +27,9 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
     model.train()
     loss_epoch = 0
     correct = 0
-    total = 0
-    for i, batch in enumerate(dataloader):
+    for i, (model_in, labels) in enumerate(dataloader):
         # get inputs/targets
-        model_in, labels = batch[0].to(device), batch[1].to(device)
+        model_in, labels = model_in.to(device), labels.to(device)
 
         # zero gradients
         optimizer.zero_grad()
@@ -42,10 +41,9 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
         optimizer.step()
 
         loss_epoch += loss.item()
-        total += len(batch)
         correct += torch.sum(torch.eq(predictions, labels)).item()
-    loss_epoch /= len(dataloader)
-    acc = correct / total
+    loss_epoch /= len(dataloader.dataset)
+    acc = correct / len(dataloader.dataset)
     return loss_epoch, acc
 
 
@@ -62,18 +60,16 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
     model.eval()
     loss_epoch = 0
     correct = 0
-    total = 0
-    with torch.no_grad:
-        for i, batch in enumerate(dataloader):
+    with torch.no_grad():
+        for i, (model_in, labels) in enumerate(dataloader):
             # get inputs/targets
-            model_in, labels = batch[0].to(device), batch[1].to(device)
+            model_in, labels = model_in.to(device), labels.to(device)
             predictions = model.forward(model_in)
             loss = loss_fn(labels, predictions)
             loss_epoch += loss.item()
-            total += len(batch)
             correct += torch.sum(torch.eq(predictions, labels)).item()
-        loss_epoch /= len(dataloader)
-        acc = correct / total
+        loss_epoch /= len(dataloader.dataset)
+        acc = correct / len(dataloader.dataset)
     return loss_epoch, acc
 
 
