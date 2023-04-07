@@ -154,10 +154,11 @@ def train(model: nn.Module, dataset: Dataset, params: dict, weights_path: str):
     gen = torch.Generator().manual_seed(42)
 
     # setup params
-    img_height, img_width = params["img_height"], params["img_width"]
+    img_height, img_width = params["image_height"], params["image_width"]
     batch_size = params["batch_size"]
     epochs = params["epochs"]
     patience = params["patience"]
+    n_classes = params["n_classes"]
     early_stopper = EarlyStopper(patience=patience, min_delta=0)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters())
@@ -181,10 +182,8 @@ def train(model: nn.Module, dataset: Dataset, params: dict, weights_path: str):
         [ds_val.dataset.transform, lambda x: x.float(),
          tv_transforms.Normalize(means, devs)])
 
-    train_loader = DataLoader(ds_train, batch_size=batch_size, shuffle=True,
-                              num_workers=4)
-    val_loader = DataLoader(ds_val, batch_size=batch_size, shuffle=True,
-                            num_workers=4)
+    train_loader = DataLoader(ds_train, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(ds_val, batch_size=batch_size, shuffle=True)
 
     train_losses = []
     train_accs = []
@@ -194,8 +193,9 @@ def train(model: nn.Module, dataset: Dataset, params: dict, weights_path: str):
     print_every = 2
     for epoch in range(epochs):
         train_loss, train_acc = train_loop(model, loss_fn, optimizer,
-                                           train_loader, device)
-        val_loss, val_acc = val_loop(model, loss_fn, val_loader, device)
+                                           train_loader, device, n_classes)
+        val_loss, val_acc = val_loop(model, loss_fn, val_loader, device,
+                                     n_classes)
         train_losses.append(train_loss)
         val_losses.append(val_loss)
         train_accs.append(train_acc)
@@ -218,18 +218,22 @@ def train(model: nn.Module, dataset: Dataset, params: dict, weights_path: str):
 def main():
     torch.backends.cudnn.enabled = False
     ds = WhaleDataset("../data/train", "../data/train.csv")
-    model = torchvision.models.efficientnet_b2(
-        num_classes=len(ds.int_label_to_cat))
-    model_name = "effnetb2"
+    n_classes = len(ds.int_label_to_cat)
+    model = torchvision.models.efficientnet_b0(
+        num_classes=n_classes, n_channels=1)
+    # fix to use 1-channel for black/white images
+    model.features[0][0] = nn.Conv2d(1, 32, kernel_size=(3, 3), stride=(2, 2),
+                                     padding=(1, 1), bias=False)
+
+    model_name = "effnetb0"
     save_dir = os.path.join("../results", model_name)
     params = {"epochs": 100, "patience": 5, "batch_size": 16,
-              "image_height": 256, "image_width": 256}
+              "image_height": 256, "image_width": 256, "n_classes": n_classes}
 
     # setup result dirs
     figures_dir = os.path.join(save_dir, "figures")
     weights_path = os.path.join(save_dir, "model_weights.pth")
     os.makedirs(figures_dir, exist_ok=True)
-    os.makedirs(weights_path, exist_ok=True)
 
     results = train(model, ds, params, weights_path)
     loss_pth = os.path.join(figures_dir, "loss.png")

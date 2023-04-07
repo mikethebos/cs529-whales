@@ -14,7 +14,7 @@ from torch.optim import Optimizer
 
 def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
                dataloader: DataLoader,
-               device: str):
+               device: str, n_classes: int):
     """
     Carry out an iteration (single epoch) of training. Will update model weights
     :param model: PyTorch model
@@ -22,6 +22,7 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
     :param optimizer: Optimizer to use
     :param dataloader: Torch DataLoader, contains training data
     :param device: str, torch device to put tensors on
+    :param n_classes: int, number of classes in data (for one-hot)
     :return: float, the total loss over the epoch
     """
     model.train()
@@ -35,19 +36,21 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
         optimizer.zero_grad()
 
         # forward + backward + optimize
-        predictions = model.forward(model_in)
-        loss = loss_fn(labels, predictions)
+        outputs = model.forward(model_in)
+        loss = loss_fn(outputs, labels)
         loss.backward()
         optimizer.step()
 
         loss_epoch += loss.item()
+        _, predictions = torch.max(outputs, 1)
         correct += torch.sum(torch.eq(predictions, labels)).item()
     loss_epoch /= len(dataloader.dataset)
     acc = correct / len(dataloader.dataset)
     return loss_epoch, acc
 
 
-def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
+def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str,
+             n_classes: int):
     """
     Carry out an iteration (single epoch) of validation. Will not update
     model weights
@@ -55,6 +58,7 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
     :param loss_fn: Loss function
     :param dataloader: Torch DataLoader, contains training data
     :param device: str, torch device to put tensors on
+    :param n_classes: int, number of classes in dataset
     :return: float, the total loss over the epoch
     """
     model.eval()
@@ -64,9 +68,11 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
         for i, (model_in, labels) in enumerate(dataloader):
             # get inputs/targets
             model_in, labels = model_in.to(device), labels.to(device)
-            predictions = model.forward(model_in)
-            loss = loss_fn(labels, predictions)
+            labels = torch.nn.functional.one_hot(labels, n_classes)  # one-hot
+            outputs = model.forward(model_in).float()
+            loss = loss_fn(outputs, labels)
             loss_epoch += loss.item()
+            _, predictions = torch.max(outputs, 1)
             correct += torch.sum(torch.eq(predictions, labels)).item()
         loss_epoch /= len(dataloader.dataset)
         acc = correct / len(dataloader.dataset)
