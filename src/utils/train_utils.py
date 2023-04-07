@@ -68,8 +68,8 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str,
         for i, (model_in, labels) in enumerate(dataloader):
             # get inputs/targets
             model_in, labels = model_in.to(device), labels.to(device)
-            labels = torch.nn.functional.one_hot(labels, n_classes)  # one-hot
-            outputs = model.forward(model_in).float()
+            outputs = model.forward(model_in)
+
             loss = loss_fn(outputs, labels)
             loss_epoch += loss.item()
             _, predictions = torch.max(outputs, 1)
