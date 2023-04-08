@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-from models import BasicCNN
+from src.models.basic_cnn import BasicCNN
 from utils.transforms import get_max_hw, basic_transform, \
     get_mean_std_of_channels
 from utils.whale_dataset import WhaleDataset
@@ -194,9 +194,8 @@ def train(model: nn.Module, dataset: Dataset, params: dict, weights_path: str):
     print_every = 2
     for epoch in range(epochs):
         train_loss, train_acc = train_loop(model, loss_fn, optimizer,
-                                           train_loader, device, n_classes)
-        val_loss, val_acc = val_loop(model, loss_fn, val_loader, device,
-                                     n_classes)
+                                           train_loader, device)
+        val_loss, val_acc = val_loop(model, loss_fn, val_loader, device)
         train_losses.append(train_loss)
         val_losses.append(val_loss)
         train_accs.append(train_acc)

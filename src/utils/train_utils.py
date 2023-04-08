@@ -14,7 +14,7 @@ from torch.optim import Optimizer
 
 def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
                dataloader: DataLoader,
-               device: str, n_classes: int):
+               device: str):
     """
     Carry out an iteration (single epoch) of training. Will update model weights
     :param model: PyTorch model
@@ -22,7 +22,6 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
     :param optimizer: Optimizer to use
     :param dataloader: Torch DataLoader, contains training data
     :param device: str, torch device to put tensors on
-    :param n_classes: int, number of classes in data (for one-hot)
     :return: float, the total loss over the epoch
     """
     model.train()
@@ -49,8 +48,7 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
     return loss_epoch, acc
 
 
-def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str,
-             n_classes: int):
+def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
     """
     Carry out an iteration (single epoch) of validation. Will not update
     model weights
@@ -58,7 +56,6 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str,
     :param loss_fn: Loss function
     :param dataloader: Torch DataLoader, contains training data
     :param device: str, torch device to put tensors on
-    :param n_classes: int, number of classes in dataset
     :return: float, the total loss over the epoch
     """
     model.eval()
