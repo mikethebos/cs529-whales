@@ -1,6 +1,5 @@
-import torch
-import numpy as np
 import pandas as pd
+import torch
 
 
 def conv2d_output_dim(dim_in: int, kernel_dim: int, stride: int = 1,
