@@ -36,7 +36,7 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
         optimizer.zero_grad()
 
         # forward + backward + optimize
-        outputs = model.forward(model_in)
+        outputs = model(model_in)
         loss = loss_fn(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -44,7 +44,7 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
         loss_epoch += loss.item()
         _, predictions = torch.max(outputs, 1)
         correct += torch.sum(torch.eq(predictions, labels)).item()
-    loss_epoch /= len(dataloader.dataset)
+    loss_epoch /= len(dataloader)
     acc = correct / len(dataloader.dataset)
     return loss_epoch, acc
 
@@ -68,13 +68,13 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str,
         for i, (model_in, labels) in enumerate(dataloader):
             # get inputs/targets
             model_in, labels = model_in.to(device), labels.to(device)
-            outputs = model.forward(model_in)
+            outputs = model(model_in)
 
             loss = loss_fn(outputs, labels)
             loss_epoch += loss.item()
             _, predictions = torch.max(outputs, 1)
             correct += torch.sum(torch.eq(predictions, labels)).item()
-        loss_epoch /= len(dataloader.dataset)
+        loss_epoch /= len(dataloader)
         acc = correct / len(dataloader.dataset)
     return loss_epoch, acc
 

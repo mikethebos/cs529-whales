@@ -228,6 +228,7 @@ def main():
 
     model_name = "effnetb0"
     save_dir = os.path.join("../results", model_name)
+    os.makedirs(save_dir, exist_ok=True)
     params = {"epochs": 100, "patience": 5, "batch_size": 16,
               "image_height": 256, "image_width": 256, "n_classes": n_classes}
 
