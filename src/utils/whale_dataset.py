@@ -70,7 +70,7 @@ class SiameseDataset(Dataset):
         self.int_label_to_cat = cats.categories
 
     def __len__(self):
-        return len(self.df)
+        return len(self.df)  # may be len(self.df) ** 2
 
     def __getitem__(self, idx):
         label1 = self.df["Id"].sample(n=1).iloc[0]

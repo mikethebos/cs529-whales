@@ -22,7 +22,7 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
     :param optimizer: Optimizer to use
     :param dataloader: Torch DataLoader, contains training data
     :param device: str, torch device to put tensors on
-    :return: float, the total loss over the epoch
+    :return: tuple[float], the total running loss, running acc over the epoch
     """
     model.train()
     loss_epoch = 0
@@ -48,6 +48,43 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
     return loss_epoch, acc
 
 
+def twin_siamese_train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
+               dataloader: DataLoader,
+               device: str):
+    """
+    Carry out an iteration (single epoch) of training of twin siamese NN. Will update model weights
+    :param model: PyTorch model
+    :param loss_fn: Loss function
+    :param optimizer: Optimizer to use
+    :param dataloader: Torch DataLoader, contains training data in twin siamese form
+    :param device: str, torch device to put tensors on
+    :return: float, the total running loss over the epoch
+    """
+    model.train()
+    loss_epoch = 0
+    # correct = 0
+    for i, (model_in_one, model_in_two, labels) in enumerate(dataloader):
+        # get inputs/targets
+        model_in_one, model_in_two, labels = model_in_one.to(device), model_in_two.to(device), labels.to(device)
+
+        # zero gradients
+        optimizer.zero_grad()
+
+        # forward + backward + optimize
+        output_one, output_two = model(model_in_one, model_in_two)
+        loss = loss_fn(output_one, output_two, labels)
+        loss.backward()
+        optimizer.step()
+
+        loss_epoch += loss.item()
+        # _, predictions = torch.max(outputs, 1)
+        # correct += torch.sum(torch.eq(predictions, labels)).item()
+    loss_epoch /= len(dataloader)
+    # acc = correct / len(dataloader.dataset)
+    # return loss_epoch, acc
+    return loss_epoch
+
+
 def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
     """
     Carry out an iteration (single epoch) of validation. Will not update
@@ -56,7 +93,7 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
     :param loss_fn: Loss function
     :param dataloader: Torch DataLoader, contains training data
     :param device: str, torch device to put tensors on
-    :return: float, the total loss over the epoch
+    :return: tuple[float], the total loss, acc over the epoch
     """
     model.eval()
     loss_epoch = 0
