@@ -39,7 +39,7 @@ class BasicTwinSiamese(nn.Module):
             nn.Linear(768, 256),
             nn.ReLU(inplace=True),
             
-            nn.Linear(256,2)
+            nn.Linear(256,128)
         )
         
     def forward_once(self, x):

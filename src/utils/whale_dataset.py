@@ -7,7 +7,7 @@ using PyTorch Dataset.
 import matplotlib.pyplot as plt
 
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 from torchvision.io import read_image, ImageReadMode
 import pandas as pd
 import random
@@ -49,10 +49,10 @@ class WhaleDataset(Dataset):
         return self.int_label_to_cat[int_label]
 
 
-class SiameseDataset(Dataset):
+class TwinSiameseDataset(Dataset):
     def __init__(self, images_dir: str, csv_file: str, transform=None):
         """
-        Initialize dataset for use with Siamese Network.
+        Initialize dataset for use with Twin Siamese Network.
         :param images_dir: str, path to image directory
         :param csv_file: str, path to csv mapping image filenames to labels
                             (1 col image names, 1 col labels)
@@ -68,6 +68,22 @@ class SiameseDataset(Dataset):
         # map unique str labels to unique int id
         self.int_labels = cats.codes
         self.int_label_to_cat = cats.categories
+        
+    def __init__(self, subset: Subset):
+        """
+        Initialize dataset for use with Twin Siamese Network with a subset of data.
+        :param subset: Subset, subset of a whale dataset
+        :return: None
+        """
+        self.img_dir = subset.dataset.img_dir
+        self.df = subset.dataset.df
+        self.transform = subset.dataset.transform
+        self.int_labels = subset.dataset.int_labels
+        self.int_label_to_cat = subset.dataset.int_label_to_cat
+        
+        self.df = self.df.iloc[subset.indices]
+        self.id_files_map = self.df.groupby('Id')['Image'].apply(list).to_dict()
+        self.int_labels = self.int_labels.iloc[subset.indices]
 
     def __len__(self):
         return len(self.df)  # may be len(self.df) ** 2
@@ -149,7 +165,7 @@ if __name__ == "__main__":
     from src.utils.transforms import basic_transform
 
     tf = basic_transform(256, 256, True)
-    ds = SiameseDataset("../../data/train", "../../data/train.csv",
+    ds = TwinSiameseDataset("../../data/train", "../../data/train.csv",
                         transform=tf)
     dl = torch.utils.data.DataLoader(ds,
                                      shuffle=True,
