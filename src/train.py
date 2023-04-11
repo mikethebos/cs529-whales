@@ -135,12 +135,11 @@ def train_twin_siamese(model: nn.Module, dataset: Dataset, params: dict, weights
     
     # train twin dataset
     ds_train_twin = TwinSiameseDataset(ds_train)
-
     train_twin_loader = DataLoader(ds_train_twin, batch_size=batch_size, shuffle=True)
-    train_loader = DataLoader(ds_train, batch_size=batch_size, shuffle=True)
     
-    val_loader = DataLoader(ds_val, batch_size=batch_size, shuffle=True)
-
+    ds_val_twin = TwinSiameseDataset(ds_val)
+    val_twin_loader = DataLoader(ds_val_twin, batch_size=batch_size, shuffle=True)
+    
     train_losses = []
     # train_accs = []
     val_losses = []
@@ -152,7 +151,7 @@ def train_twin_siamese(model: nn.Module, dataset: Dataset, params: dict, weights
         #                                    train_loader, device)
         # val_loss, val_acc = val_loop(model, loss_fn, val_loader, device)
         train_loss = twin_siamese_train_loop(model, loss_fn, optimizer, train_twin_loader, device)
-        val_loss = twin_siamese_val_loop(model, loss_fn, train_loader, val_loader, device)
+        val_loss = twin_siamese_val_loop(model, loss_fn, val_twin_loader, device)
         train_losses.append(train_loss)
         val_losses.append(val_loss)
         # train_accs.append(train_acc)

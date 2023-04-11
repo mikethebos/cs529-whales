@@ -113,14 +113,13 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
     return loss_epoch, acc
 
 
-def twin_siamese_val_loop(model: nn.Module, loss_fn, train_dataloader: DataLoader, test_dataloader: DataLoader, device: str):
+def twin_siamese_val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
     """
     Carry out an iteration (single epoch) of validation of twin siamese NN. Will not update
     model weights
     :param model: PyTorch model
     :param loss_fn: Loss function
-    :param train_dataloader: Torch DataLoader, contains training data in normal form
-    :param test_dataloader: Torch DataLoader, contains test data in normal form
+    :param dataloader: Torch DataLoader, contains test data in twin siamese form
     :param device: str, torch device to put tensors on
     :return: float, the total loss over the epoch
     """
@@ -128,21 +127,19 @@ def twin_siamese_val_loop(model: nn.Module, loss_fn, train_dataloader: DataLoade
     loss_epoch = 0
     # correct = 0
     with torch.no_grad():
-        for i, (model_test_in, test_labels) in enumerate(test_dataloader):
-            for j, (model_train_in, train_labels) in enumerate(train_dataloader):
-                # get inputs/targets
-                model_test_in, test_labels, model_train_in, train_labels = model_test_in.to(device), test_labels.to(device), model_train_in.to(device), train_labels.to(device)
-                for k in range(model_test_in.shape[0]):
-                    for l in range(model_train_in.shape[0]):
-                        label = torch.eq(test_labels[k], train_labels[l]).long().to(device)
-                        output_one, output_two = model(model_test_in[k], model_train_in[l])
+        for i, (model_in_one, model_in_two, labels) in enumerate(dataloader):
+            # get inputs/targets
+            model_in_one, model_in_two, labels = model_in_one.to(device), model_in_two.to(device), labels.to(device)
 
-                        loss = loss_fn(output_one, output_two, label)
-                        loss_epoch += loss.item()
-                # _, predictions = torch.max(outputs, 1)
-                # correct += torch.sum(torch.eq(predictions, labels)).item()
-        loss_epoch /= len(train_dataloader.dataset) * len(test_dataloader.dataset)
-        # acc = correct / len(dataloader.dataset)
+            # forward + backward + optimize
+            output_one, output_two = model(model_in_one, model_in_two)
+            loss = loss_fn(output_one, output_two, labels)
+
+            loss_epoch += loss.item()
+            # _, predictions = torch.max(outputs, 1)
+            # correct += torch.sum(torch.eq(predictions, labels)).item()
+        loss_epoch /= len(dataloader)
+    # acc = correct / len(dataloader.dataset)
     # return loss_epoch, acc
     return loss_epoch
 
