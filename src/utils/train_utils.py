@@ -141,7 +141,7 @@ def twin_siamese_val_loop(model: nn.Module, loss_fn, train_dataloader: DataLoade
                         loss_epoch += loss.item()
                 # _, predictions = torch.max(outputs, 1)
                 # correct += torch.sum(torch.eq(predictions, labels)).item()
-        loss_epoch /= len(train_dataloader) * len(test_dataloader)
+        loss_epoch /= len(train_dataloader.dataset) * len(test_dataloader.dataset)
         # acc = correct / len(dataloader.dataset)
     # return loss_epoch, acc
     return loss_epoch
