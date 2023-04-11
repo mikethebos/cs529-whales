@@ -132,11 +132,13 @@ def twin_siamese_val_loop(model: nn.Module, loss_fn, train_dataloader: DataLoade
             for j, (model_train_in, train_labels) in enumerate(train_dataloader):
                 # get inputs/targets
                 model_test_in, test_labels, model_train_in, train_labels = model_test_in.to(device), test_labels.to(device), model_train_in.to(device), train_labels.to(device)
-                labels = torch.eq(test_labels, train_labels).long().to(device)
-                output_one, output_two = model(model_test_in, model_train_in)
+                for k in range(model_test_in.shape[0]):
+                    for l in range(model_train_in.shape[0]):
+                        label = torch.eq(test_labels[k], train_labels[l]).long().to(device)
+                        output_one, output_two = model(model_test_in[k], model_train_in[l])
 
-                loss = loss_fn(output_one, output_two, labels)
-                loss_epoch += loss.item()
+                        loss = loss_fn(output_one, output_two, label)
+                        loss_epoch += loss.item()
                 # _, predictions = torch.max(outputs, 1)
                 # correct += torch.sum(torch.eq(predictions, labels)).item()
         loss_epoch /= len(train_dataloader) * len(test_dataloader)
