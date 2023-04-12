@@ -8,9 +8,9 @@ from src.utils.helpers import conv2d_output_dim
 class BasicCNN(nn.Module):
     """Adapted from https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"""
 
-    def __init__(self, input_height, input_width):
+    def __init__(self, input_height, input_width, n_channels=1):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, 6, 5)  # assume grayscale
+        self.conv1 = nn.Conv2d(n_channels, 6, 5)
         out1_h, out1_w = conv2d_output_dim(input_height, 5), conv2d_output_dim(
             input_width, 5)
         self.pool = nn.MaxPool2d(2, 2)

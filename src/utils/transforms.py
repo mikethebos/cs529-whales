@@ -1,7 +1,28 @@
+import albumentations as A
 import numpy as np
 from PIL import Image
+from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset
 from torchvision import transforms
+
+
+def basic_alb_transform(resize_height: int, resize_width: int,
+                        channel_means: list, channel_stds: list):
+    """
+    Basic transform using albumentations library
+    :param resize_height: int, height to resize images to
+    :param resize_width: int, width to resize images to
+    :param channel_means: list[float], mean values of image channels
+    :param channel_stds: list[float], standard deviations of image channels
+    :return: albumentations transform
+    """
+    tf = A.Compose([
+        A.Resize(height=resize_height, width=resize_width),
+        A.Normalize(mean=channel_means, std=channel_stds),
+        A.ToGray(p=1.0),
+        ToTensorV2()
+    ])
+    return tf
 
 
 def get_blackwhite() -> transforms.Grayscale:
@@ -106,11 +127,22 @@ def get_mean_std_of_channels(dl: Dataset, channels=1) -> tuple:
 
 
 if __name__ == "__main__":
-    from whale_dataset import WhaleDataset
-
-    ds = WhaleDataset("../../data/train", "../../data/train.csv")
+    from whale_dataset import WhaleDataset, plot_img
+    from torch.utils.data import random_split
 
     h, w = 256, 256
-    ds.transform = basic_transform(h, w, scale=True)
-    means, devs = get_mean_std_of_channels(ds, channels=1)
-    print("Means: ", means, ", devs: ", devs)
+    means = [140.1891, 147.7153, 156.5466]
+    stds = [71.8512, 68.4338, 67.5585]
+    # normalize the means and stds for albumentations usage
+    means = [m / 255.0 for m in means]
+    stds = [s / 255.0 for s in stds]
+
+    tf = basic_alb_transform(h, w, means, stds)
+    dataset = WhaleDataset("../../data/train", "../../data/train.csv",
+                           transform=tf)
+    ds_train, ds_val = random_split(dataset, [int(len(dataset) * 0.8),
+                                              int(len(dataset) * 0.2)])
+    img, label = ds_val[10]
+    print(img.shape)
+    img = img.permute(1, 2, 0)  # plotting expects (H, W, C) not (C, H, W)
+    plot_img(img)

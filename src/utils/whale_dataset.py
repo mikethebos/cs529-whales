@@ -4,14 +4,25 @@ Date: 3/29/2023
 Description: Class used to load images and labels for the happy whale dataset
 using PyTorch Dataset.
 """
-import matplotlib.pyplot as plt
+import os
+import random
 
+import cv2
+import matplotlib.pyplot as plt
+import pandas as pd
 import torch
 from torch.utils.data import Dataset, Subset
-from torchvision.io import read_image, ImageReadMode
-import pandas as pd
-import random
-import os
+
+
+def read_image(image_path: str):
+    """
+    Read in an image using the cv2 library (compatible with Albumentations)
+    :param image_path: str, path to image
+    :return: numpy.ndarray representing image <H, W, C=3>
+    """
+    image = cv2.imread(image_path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    return image
 
 
 class WhaleDataset(Dataset):
@@ -38,12 +49,11 @@ class WhaleDataset(Dataset):
     def __getitem__(self, idx):
         img_fname = self.df["Image"].iloc[idx]
         img_path = os.path.join(self.img_dir, img_fname)
-        # force into RGB to make Grayscale transform work
-        image = read_image(img_path, ImageReadMode.RGB)
+        image = read_image(img_path)
         label = self.int_labels.iloc[idx]
         if self.transform is not None:
-            image = self.transform(image)
-        return image.float(), torch.tensor(label).long()
+            image = self.transform(image=image)["image"]
+        return image, torch.tensor(label).long()
 
     def get_cat_for_label(self, int_label):
         return self.int_label_to_cat[int_label]
@@ -68,7 +78,7 @@ class TwinSiameseDataset(Dataset):
         # map unique str labels to unique int id
         self.int_labels = cats.codes
         self.int_label_to_cat = cats.categories
-        
+
     def __init__(self, subset: Subset):
         """
         Initialize dataset for use with Twin Siamese Network with a subset of data.
@@ -80,7 +90,7 @@ class TwinSiameseDataset(Dataset):
         self.transform = subset.dataset.transform
         self.int_labels = subset.dataset.int_labels
         self.int_label_to_cat = subset.dataset.int_label_to_cat
-        
+
         self.df = self.df.iloc[subset.indices]
         self.id_files_map = self.df.groupby('Id')['Image'].apply(list).to_dict()
         self.int_labels = self.int_labels.iloc[subset.indices]
@@ -108,12 +118,12 @@ class TwinSiameseDataset(Dataset):
             img2_fname = random.choice(img2_candidates)
         img1_path = os.path.join(self.img_dir, img1_fname)
         img2_path = os.path.join(self.img_dir, img2_fname)
-        img1 = read_image(img1_path, ImageReadMode.RGB)
-        img2 = read_image(img2_path, ImageReadMode.RGB)
+        img1 = read_image(img1_path)
+        img2 = read_image(img2_path)
         if self.transform is not None:
-            img1 = self.transform(img1)
-            img2 = self.transform(img2)
-        return img1.float(), img2.float(), torch.tensor(use_same_class).long()
+            img1 = self.transform(image=img1)["image"]
+            img2 = self.transform(image=img2)["image"]
+        return img1, img2, torch.tensor(use_same_class).long()
 
     def get_cat_for_label(self, int_label: int):
         return self.int_label_to_cat[int_label]
@@ -137,15 +147,14 @@ class TestWhaleDataset(Dataset):
     def __getitem__(self, idx):
         img_fname = self.images[idx]
         img_path = os.path.join(self.img_dir, img_fname)
-        # force into RGB to make Grayscale transform work
-        image = read_image(img_path, ImageReadMode.RGB)
+        image = read_image(img_path)
         if self.transform is not None:
-            image = self.transform(image)
-        return image.float()
+            image = self.transform(image=image)["image"]
+        return image
 
 
 def plot_img(image):
-    plt.imshow(image[0, :, :], cmap='gray')
+    plt.imshow(image)
     plt.show()
 
 
@@ -166,7 +175,7 @@ if __name__ == "__main__":
 
     tf = basic_transform(256, 256, True)
     ds = TwinSiameseDataset("../../data/train", "../../data/train.csv",
-                        transform=tf)
+                            transform=tf)
     dl = torch.utils.data.DataLoader(ds,
                                      shuffle=True,
                                      batch_size=4)
