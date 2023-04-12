@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import random_split, DataLoader
+from torchvision.models import efficientnet_b2
 
 from src.models.basic_twin_siamese import BasicTwinSiamese
 from src.utils.losses import ContrastiveLoss
@@ -165,12 +166,14 @@ def train_twin_siamese(model: nn.Module, params: dict, weights_path: str):
 
 def main():
     torch.backends.cudnn.enabled = False
-    model = BasicTwinSiamese(256, 256, n_channels=3)
+    n_features = 128  # backbone is doing feature extraction, not classification
+    backbone = efficientnet_b2(num_classes=n_features)
+    model = BasicTwinSiamese(backbone)
 
-    model_name = "basictwinsiamese256x256"
+    model_name = "effnetb2_twinsiamese256x256"
     save_dir = os.path.join("../results", model_name)
     os.makedirs(save_dir, exist_ok=True)
-    params = {"epochs": 1000, "patience": 20, "batch_size": 16,
+    params = {"epochs": 1000, "patience": 5, "batch_size": 16,
               "image_height": 256, "image_width": 256}
 
     # setup result dirs
