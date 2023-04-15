@@ -130,7 +130,6 @@ def main(device: str):
         torch.load(weights_path, map_location=torch.device(device)))
 
     train_outs, test_outs = get_siamese_backbone_outs(model, train_loader, test_loader, device)
-    train_outs = train_outs[0:5]
     # get predictions and create submission file
     thresh = 2.0
     predictions = get_siamese_predictions(train_outs, test_outs,
