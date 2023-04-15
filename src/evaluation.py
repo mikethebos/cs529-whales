@@ -12,6 +12,7 @@ from torchvision.models import efficientnet_b2
 import torch.nn.functional as F
 from tqdm import tqdm
 import pandas as pd
+import os
 
 from models.basic_twin_siamese import BasicTwinSiamese
 from utils.transforms import basic_alb_transform
@@ -32,11 +33,12 @@ def get_siamese_predictions(model: nn.Module, train_loader: DataLoader,
     :param k: int, generate top-k predictions for each input
     :param threshold: float, cutoff at which to predict "new_whale"
         (lower value => more likely to predict new_whale)
-    :return: 2D array predictions, where predictions[i] gives a list of k
-        strings indicating the top k predictions for test image i
+    :return: dictionary predictions where predictions[fname] gives the list of k predictions for
+        a given image file from the test data
     """
-    predictions = [[""] * k for _ in range(len(test_loader))]
-    for i, test_image in tqdm(enumerate(test_loader)):
+    predictions = {}
+    for i, (test_image, img_fname) in tqdm(enumerate(test_loader)):
+        img_fname = img_fname[0]  # was put into 1-tuple by dataloader
         test_image = test_image.to(device)
         distances = {}
         for j, (train_image, label_tensor) in enumerate(train_loader):
@@ -54,19 +56,37 @@ def get_siamese_predictions(model: nn.Module, train_loader: DataLoader,
         # if score falls below a certain threshold predict "new_whale"
         new_whale_inserted = False
         p = 0
+        predictions[img_fname] = [""] * k
         for w in range(k):
             if new_whale_inserted or \
                     avg_distances[top_k_indices[p]] < threshold:
-                predictions[i][w] = k_cat_labels[p]
+                predictions[img_fname][w] = k_cat_labels[p]
                 p += 1
             else:
-                predictions[i][w] = "new_whale"
+                predictions[img_fname][w] = "new_whale"
                 new_whale_inserted = True
     return predictions
 
 
+def create_submission_file(predictions: dict, save_path: str):
+    """
+    Create a submission file for kaggle competition
+    :param predictions: dict, maps image filenames to list of predictions
+    :param save_path: str, path to save submission csv to
+    :return: pd.DataFrame, the submission
+    """
+    submission_df = pd.DataFrame(list(predictions.items()), columns=['Image', 'Id'])
+    submission_df["Id"] = submission_df["Id"].map(lambda lst: " ".join(str(x) for x in lst))
+    submission_df.to_csv(save_path, index=False)
+    return submission_df
+
+
 def main(device: str):
     torch.backends.cudnn.enabled = False
+    print("Using device:", device)
+
+    results_dir = "../results"
+    model_name = "effnetb2_twinsiamese256x256"
 
     # load dataset/dataloader
     image_height = 256
@@ -83,7 +103,7 @@ def main(device: str):
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=True)
 
     # load model and trained weights
-    weights_path = "../results/effnetb2_twinsiamese256x256/model_weights.pth"
+    weights_path = os.path.join(results_dir, model_name, "model_weights.pth")
     n_features = 128
     backbone = efficientnet_b2(num_classes=n_features)
     model = BasicTwinSiamese(backbone)
@@ -91,10 +111,12 @@ def main(device: str):
     model.load_state_dict(
         torch.load(weights_path, map_location=torch.device(device)))
 
-    # get predictions
+    # get predictions and create submission file
+    thresh = 2.0
     predictions = get_siamese_predictions(model, train_loader, test_loader,
-                                          train_ds.int_label_to_cat, device)
-    print(predictions)
+                                          train_ds.int_label_to_cat, device, threshold=thresh)
+    submission_path = os.path.join(results_dir, model_name, "test_submission_%.2f_thresh.csv" % thresh)
+    create_submission_file(predictions, submission_path)
 
 
 if __name__ == "__main__":

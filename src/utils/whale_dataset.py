@@ -150,7 +150,7 @@ class TestWhaleDataset(Dataset):
         image = read_image(img_path)
         if self.transform is not None:
             image = self.transform(image=image)["image"]
-        return image
+        return image, img_fname
 
 
 def plot_img(image):
