@@ -21,7 +21,7 @@ from utils.whale_dataset import TestWhaleDataset, WhaleDataset
 
 def get_siamese_backbone_outs(model: BasicTwinSiamese, train_loader: DataLoader, test_loader: DataLoader, device: str):
     model.eval()
-    train_outs = [(0, 0)] * len(test_loader)
+    train_outs = [(0, 0)] * len(train_loader)
     print("Getting train outputs...")
     with torch.no_grad():
         for i, (train_image, label_idx) in tqdm(enumerate(train_loader)):
