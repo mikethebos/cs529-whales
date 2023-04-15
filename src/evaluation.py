@@ -5,29 +5,50 @@ Description:
 File containing code for generating predictions / evaluating models.
 """
 
-import torch
-from torch.utils.data import DataLoader
-import torch.nn as nn
-from torchvision.models import efficientnet_b2
-import torch.nn.functional as F
-from tqdm import tqdm
-import pandas as pd
 import os
+
+import pandas as pd
+import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from torchvision.models import efficientnet_b2
+from tqdm import tqdm
 
 from models.basic_twin_siamese import BasicTwinSiamese
 from utils.transforms import basic_alb_transform
 from utils.whale_dataset import TestWhaleDataset, WhaleDataset
 
 
-def get_siamese_predictions(model: nn.Module, train_loader: DataLoader,
-                            test_loader: DataLoader,
+def get_siamese_backbone_outs(model: BasicTwinSiamese, train_loader: DataLoader, test_loader: DataLoader, device: str):
+    model.eval()
+    train_outs = [(0, 0)] * len(test_loader)
+    print("Getting train outputs...")
+    with torch.no_grad():
+        for i, (train_image, label) in tqdm(enumerate(train_loader)):
+            train_image = train_image.to(device)
+            out = model.forward_once(train_image)
+            train_outs[i] = (out, label)
+
+    test_outs = {}
+    print("Getting test outputs...")
+    with torch.no_grad():
+        for i, (test_image, image_filename) in tqdm(enumerate(test_loader)):
+            image_filename = image_filename[0]  # gets wrapped by loader
+            test_image = test_image.to(device)
+            out = model.forward_once(test_image)
+            test_outs[image_filename] = out
+
+    return train_outs, test_outs
+
+
+def get_siamese_predictions(train_outs: list[tuple],
+                            test_outs: dict,
                             int_label_to_cat: pd.Series, device: str,
                             k: int = 5, threshold: float = 2.0):
     """
     Use a siamese network to generate predictions of a test dataset.
-    :param model: nn.Module, siamese network
-    :param train_loader: DataLoader, data model was trained on
-    :param test_loader: DataLoader, data to generate predictions for
+    :param train_outs: list[tuple], train_outs[i] = extracted features, label
+    :param test_outs: dict, maps filenames to extracted features
     :param int_label_to_cat: pd.Series, maps indices to str label names
     :param device: str, either "cpu" or "cuda:0"
     :param k: int, generate top-k predictions for each input
@@ -37,15 +58,12 @@ def get_siamese_predictions(model: nn.Module, train_loader: DataLoader,
         a given image file from the test data
     """
     predictions = {}
-    for i, (test_image, img_fname) in tqdm(enumerate(test_loader)):
-        img_fname = img_fname[0]  # was put into 1-tuple by dataloader
-        test_image = test_image.to(device)
+    for img_fname in tqdm(test_outs.keys()):
         distances = {}
-        for j, (train_image, label_tensor) in enumerate(train_loader):
-            label_idx = label_tensor.item()
-            train_image = train_image.to(device)
-            out_1, out_2 = model(test_image, train_image)
-            distance = F.pairwise_distance(out_1, out_2, keepdim=False).item()
+        test_out = test_outs[img_fname]
+        for train_out, label_idx in train_outs:
+            label_idx = label_idx.item()
+            distance = F.pairwise_distance(train_out, test_out, keepdim=False).item()
             distances[label_idx] = distances.get(label_idx, []) + [distance]
         # minimum average distance corresponds to top score
         avg_distances = {key: sum(values) / len(values) for key, values in
@@ -111,12 +129,15 @@ def main(device: str):
     model.load_state_dict(
         torch.load(weights_path, map_location=torch.device(device)))
 
+    train_outs, test_outs = get_siamese_backbone_outs(model, train_loader, test_loader, device)
+    train_outs = train_outs[0:5]
     # get predictions and create submission file
     thresh = 2.0
-    predictions = get_siamese_predictions(model, train_loader, test_loader,
+    predictions = get_siamese_predictions(train_outs, test_outs,
                                           train_ds.int_label_to_cat, device, threshold=thresh)
     submission_path = os.path.join(results_dir, model_name, "test_submission_%.2f_thresh.csv" % thresh)
     create_submission_file(predictions, submission_path)
+    print("Successfully saved submission file to:", submission_path)
 
 
 if __name__ == "__main__":
