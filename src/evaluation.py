@@ -24,10 +24,11 @@ def get_siamese_backbone_outs(model: BasicTwinSiamese, train_loader: DataLoader,
     train_outs = [(0, 0)] * len(test_loader)
     print("Getting train outputs...")
     with torch.no_grad():
-        for i, (train_image, label) in tqdm(enumerate(train_loader)):
+        for i, (train_image, label_idx) in tqdm(enumerate(train_loader)):
             train_image = train_image.to(device)
+            label_idx = label_idx.item()
             out = model.forward_once(train_image)
-            train_outs[i] = (out, label)
+            train_outs[i] = (out, label_idx)
 
     test_outs = {}
     print("Getting test outputs...")
@@ -62,7 +63,6 @@ def get_siamese_predictions(train_outs: list[tuple],
         distances = {}
         test_out = test_outs[img_fname]
         for train_out, label_idx in train_outs:
-            label_idx = label_idx.item()
             distance = F.pairwise_distance(train_out, test_out, keepdim=False).item()
             distances[label_idx] = distances.get(label_idx, []) + [distance]
         # minimum average distance corresponds to top score
