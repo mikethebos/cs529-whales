@@ -9,14 +9,28 @@ import os
 
 import pandas as pd
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.models import efficientnet_b2
 from tqdm import tqdm
 
 from models.basic_twin_siamese import BasicTwinSiamese
+from utils.helpers import get_top_k
 from utils.transforms import basic_alb_transform
 from utils.whale_dataset import TestWhaleDataset, WhaleDataset
+
+
+def get_regular_predictions(model: nn.Module, test_loader: DataLoader, int_label_to_cat: pd.Series, device: str,
+                            k: int = 5):
+    model.eval()
+    out = {}
+    with torch.no_grad():
+        for i, (test_imgs, test_fnames) in tqdm(test_loader):
+            test_imgs = test_imgs.to(device)
+            top_k = get_top_k(model, test_imgs, int_label_to_cat, k=k)
+            out.update({test_fnames[j]: li for j, li in enumerate(top_k)})
+    return out
 
 
 def get_siamese_backbone_outs(model: BasicTwinSiamese, train_loader: DataLoader, test_loader: DataLoader, device: str):
@@ -42,7 +56,7 @@ def get_siamese_backbone_outs(model: BasicTwinSiamese, train_loader: DataLoader,
     return train_outs, test_outs
 
 
-def get_siamese_predictions(train_outs: list[tuple],
+def get_siamese_predictions(train_outs: "list[tuple]",
                             test_outs: dict,
                             int_label_to_cat: pd.Series, device: str,
                             k: int = 5, threshold: float = 2.0):

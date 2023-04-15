@@ -18,20 +18,20 @@ def conv2d_output_dim(dim_in: int, kernel_dim: int, stride: int = 1,
             dilation * (kernel_dim - 1)) - 1) // stride)
 
 
-def get_top_k(model: torch.nn.Module, img: torch.Tensor,
-              int_label_to_cat: pd.Series, k: int = 5):
+def get_top_k(model: torch.nn.Module, imgs: torch.Tensor,
+              int_label_to_cat: pd.Series, k: int = 5) -> "list[list]":
     """
     Get top k predictions for a given input.
     :param model: torch.nn.Module, classifcation model
-    :param img: torch.Tensor, input whale image
+    :param imgs: torch.Tensor, input whale images
     :param int_label_to_cat: pd.Series, contains str label names
     :param k: int, number of top indices to retrieve
     :return top k indices of model outputs
     """
-    outputs = model(img).squeeze()  # larger outputs indicate higher probability
+    outputs = model(imgs)  # larger outputs indicate higher probability
     outputs = outputs.detach().numpy()
-    top_k_indices = np.argpartition(outputs, -k)[-k:]
-    cat_labels = int_label_to_cat[top_k_indices]
+    top_k_indices = (np.argpartition(outputs, -k, axis=1)[:, -k:]).tolist()
+    cat_labels = list(map(lambda l: list(map(lambda i: int_label_to_cat[i]), l), top_k_indices))
     return cat_labels
 
 
