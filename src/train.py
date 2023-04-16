@@ -9,14 +9,14 @@ from torchvision.models import efficientnet_b2
 
 from src.models.basic_twin_siamese import BasicTwinSiamese
 from src.utils.losses import ContrastiveLoss
-from src.utils.plots import plot_loss
+from src.utils.plots import plot_loss, plot_accuracy
 from src.utils.train_utils import train_loop, val_loop, twin_siamese_train_loop, \
     twin_siamese_val_loop, EarlyStopper
 from src.utils.transforms import basic_alb_transform
 from src.utils.whale_dataset import TwinSiameseDataset, WhaleDataset
 
 
-def train(model: nn.Module, params: dict, weights_path: str):
+def train(model: nn.Module, params: dict, weights_path: str, toRGB: bool = False):
     """Adapted from https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"""
 
     if torch.cuda.is_available():
@@ -47,7 +47,7 @@ def train(model: nn.Module, params: dict, weights_path: str):
     means = [m / 255.0 for m in means]
     stds = [s / 255.0 for s in stds]
 
-    tf = basic_alb_transform(img_height, img_width, means, stds)
+    tf = basic_alb_transform(img_height, img_width, means, stds, toRGB=toRGB)
     dataset = WhaleDataset("../data/train", "../data/train.csv",
                            transform=tf)
     ds_train, ds_val = random_split(dataset, [int(len(dataset) * 0.8),
@@ -85,7 +85,7 @@ def train(model: nn.Module, params: dict, weights_path: str):
     return results
 
 
-def train_twin_siamese(model: nn.Module, params: dict, weights_path: str):
+def train_twin_siamese(model: nn.Module, params: dict, weights_path: str, toRGB: bool = False):
     """Adapted from https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"""
 
     if torch.cuda.is_available():
@@ -116,7 +116,7 @@ def train_twin_siamese(model: nn.Module, params: dict, weights_path: str):
     means = [m / 255.0 for m in means]
     stds = [s / 255.0 for s in stds]
 
-    tf = basic_alb_transform(img_height, img_width, means, stds)
+    tf = basic_alb_transform(img_height, img_width, means, stds, toRGB=toRGB)
     dataset = WhaleDataset("../data/train", "../data/train.csv",
                            transform=tf)
     ds_train, ds_val = random_split(dataset, [int(len(dataset) * 0.8),
@@ -166,25 +166,39 @@ def train_twin_siamese(model: nn.Module, params: dict, weights_path: str):
 
 def main():
     torch.backends.cudnn.enabled = False
-    n_features = 128  # backbone is doing feature extraction, not classification
-    backbone = efficientnet_b2(num_classes=n_features)
-    model = BasicTwinSiamese(backbone)
+    ds = WhaleDataset("../data/train", "../data/train.csv")
+    n_features = len(ds.int_label_to_cat)
+    from facenet_pytorch import InceptionResnetV1
+    model = InceptionResnetV1(pretrained="vggface2", classify=True, num_classes=n_features)
 
-    model_name = "effnetb2_twinsiamese256x256"
+    model_name = "inceptionresnetv1_vggface2_nofreeze_classify160x160"
     save_dir = os.path.join("../results", model_name)
     os.makedirs(save_dir, exist_ok=True)
-    params = {"epochs": 1000, "patience": 5, "batch_size": 16,
-              "image_height": 256, "image_width": 256}
+    params = {"epochs": 1000, "patience": 30, "batch_size": 16,
+              "image_height": 160, "image_width": 160}
 
     # setup result dirs
     figures_dir = os.path.join(save_dir, "figures")
     weights_path = os.path.join(save_dir, "model_weights.pth")
     os.makedirs(figures_dir, exist_ok=True)
 
-    results = train_twin_siamese(model, params, weights_path)
+    results = train(model, params, weights_path, toRGB=True)
     loss_pth = os.path.join(figures_dir, "loss.png")
     plot_loss(results["epochs"], results["train_loss"], results["val_loss"],
               loss_pth)
+    acc_pth = os.path.join(figures_dir, "acc.png")
+    plot_accuracy(results['epochs'], results['train_acc'], results['val_acc'], acc_pth)
+    
+    kaggle_pth = os.path.join(save_dir, "kaggle.csv")
+    from src.evaluation import get_regular_predictions, create_submission_file
+    from src.utils.whale_dataset import TestWhaleDataset
+    means = [140.1891, 147.7153, 156.5466]
+    stds = [71.8512, 68.4338, 67.5585]
+    means = [m / 255.0 for m in means]
+    stds = [s / 255.0 for s in stds]
+    tf = basic_alb_transform(160, 160, means, stds, toRGB=True)
+    testdl = DataLoader(TestWhaleDataset("../data/test", transform=tf), batch_size=16, shuffle=False)
+    create_submission_file(get_regular_predictions(model, testdl, ds.int_label_to_cat, "cuda:0", k=5), kaggle_pth)
 
 
 if __name__ == "__main__":

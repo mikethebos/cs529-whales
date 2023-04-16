@@ -6,20 +6,30 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 
+def _toRGB_wrapper(image, **kwargs):
+    if A.is_rgb_image(image):
+        return image
+    return A.ToRGB(p=1.0)(image)
+
+
 def basic_alb_transform(resize_height: int, resize_width: int,
-                        channel_means: list, channel_stds: list):
+                        channel_means: list, channel_stds: list, toRGB: bool = False):
     """
     Basic transform using albumentations library
     :param resize_height: int, height to resize images to
     :param resize_width: int, width to resize images to
     :param channel_means: list[float], mean values of image channels
     :param channel_stds: list[float], standard deviations of image channels
+    :param toRGB: bool, true if all images should be cast to RGB
     :return: albumentations transform
     """
+    col = A.ToGray(p=1.0)
+    if toRGB:
+        col = A.Lambda(_toRGB_wrapper, p=1.0)
     tf = A.Compose([
         A.Resize(height=resize_height, width=resize_width),
         A.Normalize(mean=channel_means, std=channel_stds),
-        A.ToGray(p=1.0),
+        col,
         ToTensorV2()
     ])
     return tf
