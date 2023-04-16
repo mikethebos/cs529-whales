@@ -26,7 +26,8 @@ def get_regular_predictions(model: nn.Module, test_loader: DataLoader, int_label
     model.eval()
     out = {}
     with torch.no_grad():
-        for i, (test_imgs, test_fnames) in tqdm(test_loader):
+        # TestWhaleDataset only
+        for i, (test_imgs, test_fnames) in tqdm(enumerate(test_loader)):
             test_imgs = test_imgs.to(device)
             top_k = get_top_k(model, test_imgs, int_label_to_cat, k=k)
             out.update({test_fnames[j]: li for j, li in enumerate(top_k)})
@@ -47,6 +48,7 @@ def get_siamese_backbone_outs(model: BasicTwinSiamese, train_loader: DataLoader,
     test_outs = {}
     print("Getting test outputs...")
     with torch.no_grad():
+        # TestWhaleDataset only
         for i, (test_image, image_filename) in tqdm(enumerate(test_loader)):
             image_filename = image_filename[0]  # gets wrapped by loader
             test_image = test_image.to(device)
