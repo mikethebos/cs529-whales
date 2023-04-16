@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import torch
 
@@ -29,9 +30,9 @@ def get_top_k(model: torch.nn.Module, imgs: torch.Tensor,
     :return top k indices of model outputs
     """
     outputs = model(imgs)  # larger outputs indicate higher probability
-    outputs = outputs.detach().numpy()
+    outputs = outputs.detach().cpu().numpy()
     top_k_indices = (np.argpartition(outputs, -k, axis=1)[:, -k:]).tolist()
-    cat_labels = list(map(lambda l: list(map(lambda i: int_label_to_cat[i]), l), top_k_indices))
+    cat_labels = list(map(lambda l: list(map(lambda i: int_label_to_cat[i], l)), top_k_indices))
     return cat_labels
 
 
