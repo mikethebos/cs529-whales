@@ -123,7 +123,9 @@ class TwinSiameseDataset(Dataset):
         if self.transform is not None:
             img1 = self.transform(image=img1)["image"]
             img2 = self.transform(image=img2)["image"]
-        return img1, img2, torch.tensor(use_same_class).long()
+        # contrastive loss expects negative as 1, positive as 0
+        label = not use_same_class
+        return img1, img2, torch.tensor(label).long()
 
     def get_cat_for_label(self, int_label: int):
         return self.int_label_to_cat[int_label]
@@ -166,7 +168,7 @@ def plot_images_siamese(image1, image2, are_same):
     ax[0].set_title("Image 1")
     ax[1].imshow(image2[0, :, :], cmap='gray')
     ax[1].set_title("Image 2")
-    fig.suptitle("Same? " + str(are_same))
+    fig.suptitle("Different? " + str(are_same))
     plt.show()
 
 
