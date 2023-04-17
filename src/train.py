@@ -171,7 +171,17 @@ def main():
     from facenet_pytorch import InceptionResnetV1
     model = InceptionResnetV1(pretrained="vggface2", classify=True, num_classes=n_features)
 
-    model_name = "inceptionresnetv1_vggface2_nofreeze_classify160x160"
+    for par in model.parameters():
+        par.requires_grad = False
+    
+    for par in model.last_linear.parameters():
+        par.requires_grad = True
+    for par in model.last_bn.parameters():
+        par.requires_grad = True
+    for par in model.logits.parameters():
+        par.requires_grad = True
+
+    model_name = "inceptionresnetv1_vggface2_freezeexcept_lastlinear_lastbn_logits_classify160x160"
     save_dir = os.path.join("../results", model_name)
     os.makedirs(save_dir, exist_ok=True)
     params = {"epochs": 1000, "patience": 30, "batch_size": 16,
