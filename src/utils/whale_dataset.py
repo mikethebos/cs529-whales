@@ -103,8 +103,8 @@ class TwinSiameseDataset(Dataset):
         use_same_class = random.randint(0, 1)
         img1_fname, img2_fname = "", ""
         if use_same_class:
-            while len(self.id_files_map[label1]) <= 1:
-                # need at least two images
+            while label1 == "new_whale" or len(self.id_files_map[label1]) <= 1:
+                # new_whale not really same class and need at least two images
                 label1 = self.df["Id"].sample(n=1).iloc[0]
             candidate_fnames = self.id_files_map[label1]
             img1_fname, img2_fname = random.sample(candidate_fnames, k=2)
