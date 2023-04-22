@@ -28,15 +28,13 @@ def train_alb_transform(resize_height: int, resize_width: int,
     if toRGB:
         col = A.Lambda(_toRGB_wrapper, p=1.0)
     tf = A.Compose([
-        A.Affine(rotate=(-15, 15), translate_percent=(0.0, 0.25), shear=(-3, 3),
+        A.Affine(rotate=(-10, 10), translate_percent=(0.0, 0.05), shear=(-2, 2),
                  p=0.5),
         A.Resize(height=resize_height, width=resize_width),
         A.GaussianBlur(blur_limit=(3, 7), p=0.05),
         A.GaussNoise(p=0.05),
-        A.RandomGridShuffle(grid=(2, 2), p=0.3),
         A.Posterize(p=0.2),
         A.RandomBrightnessContrast(p=0.5),
-        A.Cutout(p=0.05),
         A.RandomSnow(p=0.1),
         A.RandomRain(p=0.05),
         A.HorizontalFlip(p=0.5),
@@ -174,7 +172,9 @@ def get_mean_std_of_channels(dl: Dataset, channels=1) -> tuple:
 
 
 if __name__ == "__main__":
-    from whale_dataset import WhaleDataset, plot_img
+    import torch
+    import matplotlib.pyplot as plt
+    from whale_dataset import WhaleDataset
     from torch.utils.data import random_split
 
     h, w = 256, 256
@@ -184,12 +184,10 @@ if __name__ == "__main__":
     means = [m / 255.0 for m in means]
     stds = [s / 255.0 for s in stds]
 
-    tf = test_alb_transform(h, w, means, stds)
+    tf = train_alb_transform(h, w, means, stds)
     dataset = WhaleDataset("../../data/train", "../../data/train.csv",
                            transform=tf)
-    ds_train, ds_val = random_split(dataset, [int(len(dataset) * 0.8),
-                                              int(len(dataset) * 0.2)])
-    img, label = ds_val[10]
-    print(img.shape)
-    img = img.permute(1, 2, 0)  # plotting expects (H, W, C) not (C, H, W)
-    plot_img(img)
+    img, label = dataset[67]
+    img = img.permute(1, 2, 0)
+    plt.imshow(img, vmin=torch.min(img).item(), vmax=torch.max(img).item())
+    plt.show()
