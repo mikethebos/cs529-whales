@@ -12,8 +12,44 @@ def _toRGB_wrapper(image, **kwargs):
     return A.ToRGB(p=1.0)(image)
 
 
+def train_alb_transform(resize_height: int, resize_width: int,
+                        channel_means: list, channel_stds: list,
+                        toRGB: bool = False):
+    """
+    Transformations used for training data
+    :param resize_height: int, height to resize images to
+    :param resize_width: int, width to resize images to
+    :param channel_means: list[float], mean values of image channels
+    :param channel_stds: list[float], standard deviations of image channels
+    :param toRGB: bool, true if all images should be cast to RGB
+    :return: albumentations transform
+    """
+    col = A.ToGray(p=1.0)
+    if toRGB:
+        col = A.Lambda(_toRGB_wrapper, p=1.0)
+    tf = A.Compose([
+        A.Affine(rotate=(-15, 15), translate_percent=(0.0, 0.25), shear=(-3, 3),
+                 p=0.5),
+        A.Resize(height=resize_height, width=resize_width),
+        A.GaussianBlur(blur_limit=(3, 7), p=0.05),
+        A.GaussNoise(p=0.05),
+        A.RandomGridShuffle(grid=(2, 2), p=0.3),
+        A.Posterize(p=0.2),
+        A.RandomBrightnessContrast(p=0.5),
+        A.Cutout(p=0.05),
+        A.RandomSnow(p=0.1),
+        A.RandomRain(p=0.05),
+        A.HorizontalFlip(p=0.5),
+        A.Normalize(mean=channel_means, std=channel_stds),
+        col,
+        ToTensorV2()
+    ])
+    return tf
+
+
 def basic_alb_transform(resize_height: int, resize_width: int,
-                        channel_means: list, channel_stds: list, toRGB: bool = False):
+                        channel_means: list, channel_stds: list,
+                        toRGB: bool = False):
     """
     Basic transform using albumentations library
     :param resize_height: int, height to resize images to
