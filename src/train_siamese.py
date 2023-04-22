@@ -18,7 +18,7 @@ from src.utils.losses import ContrastiveLoss
 from src.utils.plots import plot_loss
 from src.utils.train_utils import twin_siamese_train_loop, \
     twin_siamese_val_loop, EarlyStopper
-from src.utils.transforms import basic_alb_transform
+from src.utils.transforms import test_alb_transform
 from src.utils.whale_dataset import TwinSiameseDataset, WhaleDataset
 
 
@@ -63,8 +63,8 @@ def train_twin_siamese(model: BasicTwinSiamese, params: dict, weights_path: str,
     means = [m / 255.0 for m in means]
     stds = [s / 255.0 for s in stds]
 
-    tf = basic_alb_transform(img_height, img_width, means, stds,
-                             toRGB=toRGB)
+    tf = test_alb_transform(img_height, img_width, means, stds,
+                            toRGB=toRGB)
     dataset = WhaleDataset("../data/train", "../data/train.csv",
                            transform=tf)
     ds_train, ds_val = random_split(dataset, [int(len(dataset) * 0.8),

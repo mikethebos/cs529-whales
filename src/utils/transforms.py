@@ -47,11 +47,12 @@ def train_alb_transform(resize_height: int, resize_width: int,
     return tf
 
 
-def basic_alb_transform(resize_height: int, resize_width: int,
-                        channel_means: list, channel_stds: list,
-                        toRGB: bool = False):
+def test_alb_transform(resize_height: int, resize_width: int,
+                       channel_means: list, channel_stds: list,
+                       toRGB: bool = False):
     """
-    Basic transform using albumentations library
+    Basic transform using albumentations library. Used for model
+    inference.
     :param resize_height: int, height to resize images to
     :param resize_width: int, width to resize images to
     :param channel_means: list[float], mean values of image channels
@@ -183,7 +184,7 @@ if __name__ == "__main__":
     means = [m / 255.0 for m in means]
     stds = [s / 255.0 for s in stds]
 
-    tf = basic_alb_transform(h, w, means, stds)
+    tf = test_alb_transform(h, w, means, stds)
     dataset = WhaleDataset("../../data/train", "../../data/train.csv",
                            transform=tf)
     ds_train, ds_val = random_split(dataset, [int(len(dataset) * 0.8),

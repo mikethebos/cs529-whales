@@ -16,7 +16,7 @@ from torch.utils.data import random_split, DataLoader
 
 from src.utils.plots import plot_loss, plot_accuracy
 from src.utils.train_utils import train_loop, val_loop, EarlyStopper
-from src.utils.transforms import basic_alb_transform
+from src.utils.transforms import test_alb_transform
 from src.utils.whale_dataset import WhaleDataset
 
 
@@ -52,7 +52,7 @@ def train(model: nn.Module, params: dict, weights_path: str,
     means = [m / 255.0 for m in means]
     stds = [s / 255.0 for s in stds]
 
-    tf = basic_alb_transform(img_height, img_width, means, stds, toRGB=toRGB)
+    tf = test_alb_transform(img_height, img_width, means, stds, toRGB=toRGB)
     dataset = WhaleDataset("../data/train", "../data/train.csv",
                            transform=tf)
     ds_train, ds_val = random_split(dataset, [int(len(dataset) * 0.8),
@@ -134,7 +134,7 @@ def main():
     stds = [71.8512, 68.4338, 67.5585]
     means = [m / 255.0 for m in means]
     stds = [s / 255.0 for s in stds]
-    tf = basic_alb_transform(160, 160, means, stds, toRGB=True)
+    tf = test_alb_transform(160, 160, means, stds, toRGB=True)
     testdl = DataLoader(TestWhaleDataset("../data/test", transform=tf),
                         batch_size=16, shuffle=False)
     create_submission_file(
