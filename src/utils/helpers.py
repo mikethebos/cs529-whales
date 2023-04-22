@@ -32,21 +32,23 @@ def get_top_k(model: torch.nn.Module, imgs: torch.Tensor,
     outputs = model(imgs)  # larger outputs indicate higher probability
     outputs = outputs.detach().cpu().numpy()
     top_k_indices = (np.argpartition(outputs, -k, axis=1)[:, -k:]).tolist()
-    cat_labels = list(map(lambda l: list(map(lambda i: int_label_to_cat[i], l)), top_k_indices))
+    cat_labels = list(map(lambda l: list(map(lambda i: int_label_to_cat[i], l)),
+                          top_k_indices))
     return cat_labels
 
 
+def get_model_params(model: torch.nn.Module):
+    """
+    Get the number of trainable parameters for a model
+    :param model: nn.Module, PyTorch model
+    :return: int, number of trainable params in model
+    """
+    return sum([p.numel() for p in model.parameters() if p.requires_grad])
+
+
 if __name__ == "__main__":
-    from whale_dataset import WhaleDataset
-    from torchvision.models import resnet18
-    from transforms import *
+    from torchvision.models import efficientnet_b2
 
-    ds = WhaleDataset("../../data/train", "../../data/train.csv")
-    image, label = ds[0]
-    print(label)
-    print(ds.get_cat_for_label(label))
-
-    model1 = resnet18(num_classes=len(ds.int_label_to_cat))
-    image = image.unsqueeze(0)
-    top5 = get_top_k(model1, image, ds.int_label_to_cat)
-    print(top5)
+    model1 = efficientnet_b2(num_classes=52)
+    param_count = get_model_params(model1)
+    print(param_count)
