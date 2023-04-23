@@ -18,7 +18,7 @@ from src.utils.losses import ContrastiveLoss
 from src.utils.plots import plot_loss
 from src.utils.train_utils import twin_siamese_train_loop, \
     twin_siamese_val_loop, EarlyStopper
-from src.utils.transforms import test_alb_transform
+from src.utils.transforms import test_alb_transform, train_alb_transform
 from src.utils.whale_dataset import TwinSiameseDataset, WhaleDataset
 
 
@@ -63,13 +63,17 @@ def train_twin_siamese(model: BasicTwinSiamese, params: dict, weights_path: str,
     means = [m / 255.0 for m in means]
     stds = [s / 255.0 for s in stds]
 
-    tf = test_alb_transform(img_height, img_width, means, stds,
-                            toRGB=toRGB)
+    train_tf = train_alb_transform(img_height, img_width, means, stds,
+                                   toRGB=toRGB)
+    test_tf = test_alb_transform(img_height, img_width, means, stds,
+                                 toRGB=toRGB)
     dataset = WhaleDataset("../data/train", "../data/train.csv",
-                           transform=tf)
+                           transform=None)
     ds_train, ds_val = random_split(dataset, [int(len(dataset) * 0.8),
                                               int(len(dataset) * 0.2)],
                                     generator=gen)
+    ds_train.dataset.transform = train_tf
+    ds_val.dataset.transform = test_tf
 
     # train twin dataset
     ds_train_twin = TwinSiameseDataset(ds_train)
@@ -106,26 +110,25 @@ def train_twin_siamese(model: BasicTwinSiamese, params: dict, weights_path: str,
 
 
 def main():
+    from torchvision.models import efficientnet_b2
     torch.backends.cudnn.enabled = False
     n_features = 512
-    from facenet_pytorch import InceptionResnetV1
-    backbone = InceptionResnetV1(pretrained="vggface2", classify=False,
-                                 num_classes=n_features)
+    backbone = efficientnet_b2(num_classes=n_features)
     head = nn.Sequential(nn.Linear(n_features, 256), nn.ReLU(inplace=True),
                          nn.Linear(256, 128))
-    model = BasicTwinSiamese(backbone, head)
+    model = BasicTwinSiamese(backbone, head, dropout_r=0.3)
 
-    model_name = "inceptionres_finetune"
+    model_name = "effnetb2_regularized"
     save_dir = os.path.join("../results", model_name)
     os.makedirs(save_dir, exist_ok=True)
-    params = {"epochs": 1000, "patience": 20, "batch_size": 16,
-              "image_height": 256, "image_width": 256, "weight_decay": 0}
+    params = {"epochs": 1000, "patience": 20, "batch_size": 4,
+              "image_height": 256, "image_width": 256, "weight_decay": 1e-5}
 
     # setup result dirs
     figures_dir = os.path.join(save_dir, "figures")
     weights_path = os.path.join(save_dir, "model_weights.pth")
     os.makedirs(figures_dir, exist_ok=True)
-    results = train_twin_siamese(model, params, weights_path)
+    results = train_twin_siamese(model, params, weights_path, toRGB=False)
     loss_pth = os.path.join(figures_dir, "loss.png")
     plot_loss(results["epochs"], results["train_loss"], results["val_loss"],
               loss_pth)

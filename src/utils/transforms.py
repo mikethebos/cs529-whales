@@ -186,8 +186,11 @@ if __name__ == "__main__":
 
     tf = train_alb_transform(h, w, means, stds)
     dataset = WhaleDataset("../../data/train", "../../data/train.csv",
-                           transform=tf)
-    img, label = dataset[67]
+                           transform=None)
+    ds_train, ds_val = random_split(dataset, [int(len(dataset) * 0.8),
+                                              int(len(dataset) * 0.2)])
+    ds_train.dataset.transform = tf
+    img, label = ds_train[67]
     img = img.permute(1, 2, 0)
     plt.imshow(img, vmin=torch.min(img).item(), vmax=torch.max(img).item())
     plt.show()
