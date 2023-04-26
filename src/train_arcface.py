@@ -79,31 +79,27 @@ def train(model: nn.Module, params: dict, weights_path: str,
     loss_fn = losses.ArcFaceLoss(num_classes, embed_size)
 
     train_losses = []
-    train_accs = []
     val_losses = []
-    val_accs = []
     epoch_ls = []
     print_every = 2
     for epoch in range(epochs):
-        train_loss, train_acc = train_loop(model, loss_fn, optimizer,
-                                           train_loader, device)
-        val_loss, val_acc = val_loop(model, loss_fn, val_loader, device)
+        train_loss, _ = train_loop(model, loss_fn, optimizer,
+                                   train_loader, device, calculate_acc=False)
+        val_loss, _ = val_loop(model, loss_fn, val_loader, device,
+                               calculate_acc=False)
         train_losses.append(train_loss)
         val_losses.append(val_loss)
-        train_accs.append(train_acc)
-        val_accs.append(val_acc)
         epoch_ls.append(epoch)
         if epoch % print_every == 0:
             print(
-                f'{epoch + 1} train loss: {train_loss / 50.0:.6f}, train acc {train_acc:.6f}, val loss: {val_loss:.6f}, val acc: {val_acc:.6f}')
+                f'{epoch + 1} train loss: {train_loss / 50.0:.6f}, val loss: {val_loss:.6f}')
         if val_loss < early_stopper.min_validation_loss:
             # save model with the lowest validation accuracy
             torch.save(model.state_dict(), weights_path)
         if early_stopper.early_stop(val_loss):
             break
     results = {"epochs": epoch_ls, "train_loss": train_losses,
-               "val_loss": val_losses, "train_acc": train_accs,
-               "val_acc": val_accs}
+               "val_loss": val_losses}
     return results
 
 
@@ -133,9 +129,6 @@ def main():
     loss_pth = os.path.join(figures_dir, "loss.png")
     plot_loss(results["epochs"], results["train_loss"], results["val_loss"],
               loss_pth)
-    acc_pth = os.path.join(figures_dir, "acc.png")
-    plot_accuracy(results['epochs'], results['train_acc'], results['val_acc'],
-                  acc_pth)
 
 
 if __name__ == "__main__":

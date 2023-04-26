@@ -14,7 +14,7 @@ from torch.optim import Optimizer
 
 def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
                dataloader: DataLoader,
-               device: str):
+               device: str, calculate_acc: bool = True):
     """
     Carry out an iteration (single epoch) of training. Will update model weights
     :param model: PyTorch model
@@ -22,6 +22,8 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
     :param optimizer: Optimizer to use
     :param dataloader: Torch DataLoader, contains training data
     :param device: str, torch device to put tensors on
+    :param calculate_acc: bool, whether to spend additional compute calculating
+        accuracy
     :return: tuple[float], the total running loss, running acc over the epoch
     """
     model.train()
@@ -42,15 +44,16 @@ def train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
 
         loss_epoch += loss.item()
         _, predictions = torch.max(outputs, 1)
-        correct += torch.sum(torch.eq(predictions, labels)).item()
+        if calculate_acc:
+            correct += torch.sum(torch.eq(predictions, labels)).item()
     loss_epoch /= len(dataloader)
     acc = correct / len(dataloader.dataset)
     return loss_epoch, acc
 
 
 def twin_siamese_train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
-               dataloader: DataLoader,
-               device: str):
+                            dataloader: DataLoader,
+                            device: str):
     """
     Carry out an iteration (single epoch) of training of twin siamese NN. Will update model weights
     :param model: PyTorch model
@@ -65,7 +68,8 @@ def twin_siamese_train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
     # correct = 0
     for i, (model_in_one, model_in_two, labels) in enumerate(dataloader):
         # get inputs/targets
-        model_in_one, model_in_two, labels = model_in_one.to(device), model_in_two.to(device), labels.to(device)
+        model_in_one, model_in_two, labels = model_in_one.to(
+            device), model_in_two.to(device), labels.to(device)
 
         # zero gradients
         optimizer.zero_grad()
@@ -85,7 +89,8 @@ def twin_siamese_train_loop(model: nn.Module, loss_fn, optimizer: Optimizer,
     return loss_epoch
 
 
-def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
+def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str,
+             calculate_acc: bool = True):
     """
     Carry out an iteration (single epoch) of validation. Will not update
     model weights
@@ -93,6 +98,8 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
     :param loss_fn: Loss function
     :param dataloader: Torch DataLoader, contains test data
     :param device: str, torch device to put tensors on
+    :param calculate_acc: bool, whether to spend additional compute calculating
+        accuracy
     :return: tuple[float], the total loss, acc over the epoch
     """
     model.eval()
@@ -107,13 +114,15 @@ def val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
             loss = loss_fn(outputs, labels)
             loss_epoch += loss.item()
             _, predictions = torch.max(outputs, 1)
-            correct += torch.sum(torch.eq(predictions, labels)).item()
+            if calculate_acc:
+                correct += torch.sum(torch.eq(predictions, labels)).item()
         loss_epoch /= len(dataloader)
         acc = correct / len(dataloader.dataset)
     return loss_epoch, acc
 
 
-def twin_siamese_val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, device: str):
+def twin_siamese_val_loop(model: nn.Module, loss_fn, dataloader: DataLoader,
+                          device: str):
     """
     Carry out an iteration (single epoch) of validation of twin siamese NN. Will not update
     model weights
@@ -129,7 +138,8 @@ def twin_siamese_val_loop(model: nn.Module, loss_fn, dataloader: DataLoader, dev
     with torch.no_grad():
         for i, (model_in_one, model_in_two, labels) in enumerate(dataloader):
             # get inputs/targets
-            model_in_one, model_in_two, labels = model_in_one.to(device), model_in_two.to(device), labels.to(device)
+            model_in_one, model_in_two, labels = model_in_one.to(
+                device), model_in_two.to(device), labels.to(device)
 
             # forward + backward + optimize
             output_one, output_two = model(model_in_one, model_in_two)
