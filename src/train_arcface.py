@@ -115,9 +115,8 @@ def main():
     backbone = efficientnet_b2(weights=EfficientNet_B2_Weights.DEFAULT)
     backbone.classifier[1] = nn.Linear(in_features=1408,
                                        out_features=n_features)
-    head = nn.Sequential(nn.Linear(n_features, 256), nn.ReLU(inplace=True),
-                         nn.Linear(256, 128))
-    model = FeatureExtractor(backbone, head, dropout_r=0.3)
+    head = nn.Sequential(nn.ReLU(), nn.Linear(n_features, embed_size))
+    model = FeatureExtractor(backbone, head, 0.3)
 
     model_name = "effnetb2_arcface"
     save_dir = os.path.join("../results", model_name)

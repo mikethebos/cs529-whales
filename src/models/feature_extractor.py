@@ -39,14 +39,9 @@ if __name__ == "__main__":
     backbone = efficientnet_b2(weights=EfficientNet_B2_Weights.DEFAULT)
     backbone.classifier[1] = nn.Linear(in_features=1408,
                                        out_features=n_features)
-    head = nn.Sequential(nn.Linear(n_features, 256), nn.ReLU(inplace=True),
-                         nn.Linear(256, 128))
-    model = FeatureExtractor(backbone, head)
+    head = nn.Sequential(nn.ReLU(), nn.Linear(n_features, embed_size))
+    model = FeatureExtractor(backbone, head, 0.3)
+    print(model)
     img1 = torch.randn((1, 3, 256, 256))
     y1 = model(img1)
-    y11 = model(img1)
-    print(torch.min(y1))
-    print(torch.min(y11))
-    model.eval()
-    y2 = model(img1)
-    print(torch.min(y2))
+    print(y1.shape)
