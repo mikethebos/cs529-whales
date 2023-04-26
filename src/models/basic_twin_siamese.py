@@ -8,7 +8,8 @@ class BasicTwinSiamese(nn.Module):
     https://datahacker.rs/019-siamese-network-in-pytorch-with-application-to-face-similarity/
     """
 
-    def __init__(self, backbone: nn.Module, head: nn.Module, dropout_r: float = -1.0):
+    def __init__(self, backbone: nn.Module, head: nn.Module,
+                 dropout_r: float = 0.0):
         """
         Initialize siamese network
         :param backbone: nn.Module, backbone network that will
@@ -18,14 +19,11 @@ class BasicTwinSiamese(nn.Module):
         super().__init__()
         self.backbone = backbone
         self.head = head
-        self.dropout = None
-        if dropout_r > 0:
-            self.dropout = nn.Dropout(dropout_r)
+        self.dropout = nn.Dropout(dropout_r)
 
     def forward_once(self, x):
         output = self.backbone(x)
-        if self.dropout is not None:
-            output = self.dropout(output)
+        output = self.dropout(output)
         output = self.head(output)
         return output
 
