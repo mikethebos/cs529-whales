@@ -112,8 +112,9 @@ def main():
     torch.backends.cudnn.enabled = False
     n_features = 512
     embed_size = 256
-    backbone = efficientnet_b2(num_classes=n_features,
-                               weights=EfficientNet_B2_Weights.DEFAULT)
+    backbone = efficientnet_b2(weights=EfficientNet_B2_Weights.DEFAULT)
+    backbone.classifier[1] = nn.Linear(in_features=1408,
+                                       out_features=n_features)
     head = nn.Sequential(nn.Linear(n_features, 256), nn.ReLU(inplace=True),
                          nn.Linear(256, 128))
     model = FeatureExtractor(backbone, head, dropout_r=0.3)
