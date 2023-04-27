@@ -53,8 +53,11 @@ def train_twin_siamese(model: BasicTwinSiamese, params: dict, weights_path: str,
     patience = params["patience"]
     early_stopper = EarlyStopper(patience=patience, min_delta=0)
     loss_fn = ContrastiveLoss(margin=2.0)
-    optimizer = optim.Adam(model.parameters(),
-                           weight_decay=params["weight_decay"])
+    if "weight_decay" in params:
+        optimizer = optim.Adam(model.parameters(),
+                               weight_decay=params["weight_decay"])
+    else:
+        optimizer = optim.Adam(model.parameters())
 
     # load dataset
     means = [140.1891, 147.7153, 156.5466]
@@ -194,4 +197,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    inceptionResnetV1()
