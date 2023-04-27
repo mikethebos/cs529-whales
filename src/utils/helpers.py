@@ -32,21 +32,47 @@ def get_top_k(model: torch.nn.Module, imgs: torch.Tensor,
     outputs = model(imgs)  # larger outputs indicate higher probability
     outputs = outputs.detach().cpu().numpy()
     top_k_indices = (np.argpartition(outputs, -k, axis=1)[:, -k:]).tolist()
-    cat_labels = list(map(lambda l: list(map(lambda i: int_label_to_cat[i], l)), top_k_indices))
+    cat_labels = list(map(lambda l: list(map(lambda i: int_label_to_cat[i], l)),
+                          top_k_indices))
     return cat_labels
 
 
+def get_model_params(model: torch.nn.Module):
+    """
+    Get the number of trainable parameters for a model
+    :param model: nn.Module, PyTorch model
+    :return: int, number of trainable params in model
+    """
+    return sum([p.numel() for p in model.parameters() if p.requires_grad])
+
+
+def freeze_effnet_weights(effnet_model: torch.nn.Module, in_features: int,
+                          out_features: int):
+    """
+    Freeze the weights of an efficient-net model
+    :param effnet_model: nn.Module, torch efficientnet model
+    :param in_features: int, input features to classification head
+    :param out_features: int, output features from classification head
+    :return: model, effnet with all layers frozen except head
+    """
+    for name, param in effnet_model.named_parameters():
+        if "classifier" not in name:
+            param.requires_grad = False
+
+    # Change the final classification head.
+    effnet_model.classifier[1] = torch.nn.Linear(in_features=in_features,
+                                                 out_features=out_features)
+    return effnet_model
+
+
 if __name__ == "__main__":
-    from whale_dataset import WhaleDataset
-    from torchvision.models import resnet18
-    from transforms import *
+    from torchvision.models import efficientnet_b2
 
-    ds = WhaleDataset("../../data/train", "../../data/train.csv")
-    image, label = ds[0]
-    print(label)
-    print(ds.get_cat_for_label(label))
-
-    model1 = resnet18(num_classes=len(ds.int_label_to_cat))
-    image = image.unsqueeze(0)
-    top5 = get_top_k(model1, image, ds.int_label_to_cat)
-    print(top5)
+    model1 = efficientnet_b2(num_classes=512)
+    print(model1)
+    print("trainable params before freeze:", get_model_params(model1))
+    model1 = freeze_effnet_weights(model1, 512, 256)
+    print("after:", get_model_params(model1))
+    for name, param in model1.named_parameters():
+        if param.requires_grad:
+            print(name)

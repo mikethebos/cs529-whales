@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from models.basic_twin_siamese import BasicTwinSiamese
 from utils.helpers import get_top_k
-from utils.transforms import basic_alb_transform
+from utils.transforms import test_alb_transform
 from utils.whale_dataset import TestWhaleDataset, WhaleDataset
 
 
@@ -130,7 +130,7 @@ def main(device: str):
     # normalize the means and stds for albumentations usage
     means = [m / 255.0 for m in means]
     stds = [s / 255.0 for s in stds]
-    tf = basic_alb_transform(image_height, image_width, means, stds)
+    tf = test_alb_transform(image_height, image_width, means, stds)
     train_ds = WhaleDataset("../data/train", "../data/train.csv", transform=tf)
     test_ds = TestWhaleDataset("../data/test", transform=tf)
     train_loader = DataLoader(train_ds, batch_size=1, shuffle=False)
