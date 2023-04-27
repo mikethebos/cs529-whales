@@ -90,124 +90,56 @@ def train(model: nn.Module, params: dict, weights_path: str,
     return results
 
 
-def inceptionResnetV1():
-    torch.backends.cudnn.enabled = False
-    ds = WhaleDataset("../data/train", "../data/train.csv")
-    n_features = 512
-    from facenet_pytorch import InceptionResnetV1
-    backbone = InceptionResnetV1(pretrained="vggface2", classify=True, num_classes=n_features)
-
-    from src.models.basic_twin_siamese import BasicTwinSiamese
-    model = BasicTwinSiamese(backbone, nn.Identity())
-
-    for par in backbone.parameters():
-        par.requires_grad = False
-    
-    for par in backbone.last_linear.parameters():
-        par.requires_grad = True
-    for par in backbone.last_bn.parameters():
-        par.requires_grad = True
-    for par in backbone.logits.parameters():
-        par.requires_grad = True
-
-    model_name = "inceptionresnetv1_vggface2_freezeexcept_lastlinear_lastbn_logits_classify160x160_siamese_20epochs"
-    save_dir = os.path.join("../results", model_name)
-    os.makedirs(save_dir, exist_ok=True)
-    params = {"epochs": 20, "patience": 60, "batch_size": 16,
-              "image_height": 160, "image_width": 160}
-
-    # setup result dirs
-    figures_dir = os.path.join(save_dir, "figures")
-    weights_path = os.path.join(save_dir, "model_weights.pth")
-    os.makedirs(figures_dir, exist_ok=True)
-
-    results = train_twin_siamese(model, params, weights_path, toRGB=True)
-    loss_pth = os.path.join(figures_dir, "loss.png")
-    plot_loss(results["epochs"], results["train_loss"], results["val_loss"],
-              loss_pth)
-    # acc_pth = os.path.join(figures_dir, "acc.png")
-    # plot_accuracy(results['epochs'], results['train_acc'], results['val_acc'], acc_pth)
-    
-    thresh = 0.01
-    kaggle_pth = os.path.join(save_dir, "kaggle" + str(thresh) + ".csv")
-    from src.evaluation import get_regular_predictions, get_siamese_predictions, get_siamese_backbone_outs, create_submission_file
-    from src.utils.whale_dataset import TestWhaleDataset
-    means = [140.1891, 147.7153, 156.5466]
-    stds = [71.8512, 68.4338, 67.5585]
-    means = [m / 255.0 for m in means]
-    stds = [s / 255.0 for s in stds]
-    tf = basic_alb_transform(160, 160, means, stds, toRGB=True)
-    # testdl = DataLoader(TestWhaleDataset("../data/test", transform=tf), batch_size=16, shuffle=False)
-    
-    train_ds = WhaleDataset("../data/train", "../data/train.csv", transform=tf)
-    test_ds = TestWhaleDataset("../data/test", transform=tf)
-    train_loader = DataLoader(train_ds, batch_size=1, shuffle=False)
-    test_loader = DataLoader(test_ds, batch_size=1, shuffle=True)
-    
-    train_outs, test_outs = get_siamese_backbone_outs(model, train_loader, test_loader, "cuda:0")
-    create_submission_file(get_siamese_predictions(train_outs, test_outs, ds.int_label_to_cat, "cuda:0", k=5, threshold=thresh), kaggle_pth)
-
-
-def inceptionResnetV1():
-    torch.backends.cudnn.enabled = False
-    ds = WhaleDataset("../data/train", "../data/train.csv")
-    n_features = 512
-    from facenet_pytorch import InceptionResnetV1
-    backbone = InceptionResnetV1(pretrained="vggface2", classify=True, num_classes=n_features)
-
-    from src.models.basic_twin_siamese import BasicTwinSiamese
-    model = BasicTwinSiamese(backbone, nn.Identity())
-
-    for par in backbone.parameters():
-        par.requires_grad = False
-    
-    for par in backbone.last_linear.parameters():
-        par.requires_grad = True
-    for par in backbone.last_bn.parameters():
-        par.requires_grad = True
-    for par in backbone.logits.parameters():
-        par.requires_grad = True
-
-    model_name = "inceptionresnetv1_vggface2_freezeexcept_lastlinear_lastbn_logits_classify160x160_siamese_20epochs"
-    save_dir = os.path.join("../results", model_name)
-    os.makedirs(save_dir, exist_ok=True)
-    params = {"epochs": 20, "patience": 60, "batch_size": 16,
-              "image_height": 160, "image_width": 160}
-
-    # setup result dirs
-    figures_dir = os.path.join(save_dir, "figures")
-    weights_path = os.path.join(save_dir, "model_weights.pth")
-    os.makedirs(figures_dir, exist_ok=True)
-
-    results = train_twin_siamese(model, params, weights_path, toRGB=True)
-    loss_pth = os.path.join(figures_dir, "loss.png")
-    plot_loss(results["epochs"], results["train_loss"], results["val_loss"],
-              loss_pth)
-    # acc_pth = os.path.join(figures_dir, "acc.png")
-    # plot_accuracy(results['epochs'], results['train_acc'], results['val_acc'], acc_pth)
-    
-    thresh = 0.01
-    kaggle_pth = os.path.join(save_dir, "kaggle" + str(thresh) + ".csv")
-    from src.evaluation import get_regular_predictions, get_siamese_predictions, get_siamese_backbone_outs, create_submission_file
-    from src.utils.whale_dataset import TestWhaleDataset
-    means = [140.1891, 147.7153, 156.5466]
-    stds = [71.8512, 68.4338, 67.5585]
-    means = [m / 255.0 for m in means]
-    stds = [s / 255.0 for s in stds]
-    tf = basic_alb_transform(160, 160, means, stds, toRGB=True)
-    # testdl = DataLoader(TestWhaleDataset("../data/test", transform=tf), batch_size=16, shuffle=False)
-    
-    train_ds = WhaleDataset("../data/train", "../data/train.csv", transform=tf)
-    test_ds = TestWhaleDataset("../data/test", transform=tf)
-    train_loader = DataLoader(train_ds, batch_size=1, shuffle=False)
-    test_loader = DataLoader(test_ds, batch_size=1, shuffle=True)
-    
-    train_outs, test_outs = get_siamese_backbone_outs(model, train_loader, test_loader, "cuda:0")
-    create_submission_file(get_siamese_predictions(train_outs, test_outs, ds.int_label_to_cat, "cuda:0", k=5, threshold=thresh), kaggle_pth)
-
-
 def main():
-    inceptionResnetV1()
+    torch.backends.cudnn.enabled = False
+    ds = WhaleDataset("../data/train", "../data/train.csv")
+    n_features = len(ds.int_label_to_cat)
+    from facenet_pytorch import InceptionResnetV1
+    model = InceptionResnetV1(pretrained="vggface2", classify=True,
+                              num_classes=n_features)
+
+    for par in model.parameters():
+        par.requires_grad = False
+
+    for par in model.last_linear.parameters():
+        par.requires_grad = True
+    for par in model.last_bn.parameters():
+        par.requires_grad = True
+    for par in model.logits.parameters():
+        par.requires_grad = True
+
+    model_name = "inceptionresnetv1_vggface2_freezeexcept_lastlinear_lastbn_logits_classify160x160"
+    save_dir = os.path.join("../results", model_name)
+    os.makedirs(save_dir, exist_ok=True)
+    params = {"epochs": 1000, "patience": 30, "batch_size": 16,
+              "image_height": 160, "image_width": 160}
+
+    # setup result dirs
+    figures_dir = os.path.join(save_dir, "figures")
+    weights_path = os.path.join(save_dir, "model_weights.pth")
+    os.makedirs(figures_dir, exist_ok=True)
+
+    results = train(model, params, weights_path, toRGB=True)
+    loss_pth = os.path.join(figures_dir, "loss.png")
+    plot_loss(results["epochs"], results["train_loss"], results["val_loss"],
+              loss_pth)
+    acc_pth = os.path.join(figures_dir, "acc.png")
+    plot_accuracy(results['epochs'], results['train_acc'], results['val_acc'],
+                  acc_pth)
+
+    kaggle_pth = os.path.join(save_dir, "kaggle.csv")
+    from src.evaluation import get_regular_predictions, create_submission_file
+    from src.utils.whale_dataset import TestWhaleDataset
+    means = [140.1891, 147.7153, 156.5466]
+    stds = [71.8512, 68.4338, 67.5585]
+    means = [m / 255.0 for m in means]
+    stds = [s / 255.0 for s in stds]
+    tf = test_alb_transform(160, 160, means, stds, toRGB=True)
+    testdl = DataLoader(TestWhaleDataset("../data/test", transform=tf),
+                        batch_size=16, shuffle=False)
+    create_submission_file(
+        get_regular_predictions(model, testdl, ds.int_label_to_cat, "cuda:0",
+                                k=5), kaggle_pth)
 
 
 if __name__ == "__main__":
