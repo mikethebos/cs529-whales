@@ -117,7 +117,7 @@ def inceptionResnetV1():
     ds = WhaleDataset("../data/train", "../data/train.csv")
     n_features = 512
     from facenet_pytorch import InceptionResnetV1
-    backbone = InceptionResnetV1(pretrained="vggface2", classify=True, num_classes=n_features)
+    backbone = InceptionResnetV1(pretrained=None, classify=True, num_classes=n_features)
 
     from src.models.basic_twin_siamese import BasicTwinSiamese
     model = BasicTwinSiamese(backbone, nn.Identity())
@@ -132,7 +132,7 @@ def inceptionResnetV1():
     for par in backbone.logits.parameters():
         par.requires_grad = True
 
-    model_name = "inceptionresnetv1_vggface2_freezeexcept_lastlinear_lastbn_logits_classify160x160_siamese_100epochs_augs"
+    model_name = "inceptionresnetv1_nopretraining_freezeexcept_lastlinear_lastbn_logits_classify160x160_siamese_100epochs_augs"
     save_dir = os.path.join("../results", model_name)
     os.makedirs(save_dir, exist_ok=True)
     params = {"epochs": 100, "patience": 101, "batch_size": 16,
@@ -170,6 +170,63 @@ def inceptionResnetV1():
     create_submission_file(get_siamese_predictions(train_outs, test_outs, ds.int_label_to_cat, "cuda:0", k=5, threshold=thresh), kaggle_pth)
 
 
+def xception():
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
+    torch.backends.cudnn.enabled = False
+    ds = WhaleDataset("../data/train", "../data/train.csv")
+    n_features = 1000
+    from pretrainedmodels import xception
+    backbone = xception(n_features, pretrained="imagenet")
+
+    from src.models.basic_twin_siamese import BasicTwinSiamese
+    model = BasicTwinSiamese(backbone, nn.Identity())
+
+    for par in backbone.parameters():
+        par.requires_grad = False
+    
+    for par in backbone.last_linear.parameters():
+        par.requires_grad = True
+    for par in backbone.bn4.parameters():
+        par.requires_grad = True
+
+    model_name = "xception_imagenet_freezeexceptlastlinearbn4_1000feats_299x299_siamese_100epochs_augs"
+    save_dir = os.path.join("../results", model_name)
+    os.makedirs(save_dir, exist_ok=True)
+    params = {"epochs": 100, "patience": 101, "batch_size": 16,
+              "image_height": 299, "image_width": 299}
+
+    # setup result dirs
+    figures_dir = os.path.join(save_dir, "figures")
+    weights_path = os.path.join(save_dir, "model_weights.pth")
+    os.makedirs(figures_dir, exist_ok=True)
+
+    results = train_twin_siamese(model, params, weights_path, toRGB=True)
+    loss_pth = os.path.join(figures_dir, "loss.png")
+    plot_loss(results["epochs"], results["train_loss"], results["val_loss"],
+              loss_pth)
+    # acc_pth = os.path.join(figures_dir, "acc.png")
+    # plot_accuracy(results['epochs'], results['train_acc'], results['val_acc'], acc_pth)
+    
+    thresh = 0.01
+    kaggle_pth = os.path.join(save_dir, "kaggle" + str(thresh) + ".csv")
+    from src.evaluation import get_regular_predictions, get_siamese_predictions, get_siamese_backbone_outs, create_submission_file
+    from src.utils.whale_dataset import TestWhaleDataset
+    means = [140.1891, 147.7153, 156.5466]
+    stds = [71.8512, 68.4338, 67.5585]
+    means = [m / 255.0 for m in means]
+    stds = [s / 255.0 for s in stds]
+    tf = test_alb_transform(299, 299, means, stds, toRGB=True)
+    # testdl = DataLoader(TestWhaleDataset("../data/test", transform=tf), batch_size=16, shuffle=False)
+    
+    train_ds = WhaleDataset("../data/train", "../data/train.csv", transform=tf)
+    test_ds = TestWhaleDataset("../data/test", transform=tf)
+    train_loader = DataLoader(train_ds, batch_size=1, shuffle=False)
+    test_loader = DataLoader(test_ds, batch_size=1, shuffle=True)
+    
+    train_outs, test_outs = get_siamese_backbone_outs(model, train_loader, test_loader, "cuda:0")
+    create_submission_file(get_siamese_predictions(train_outs, test_outs, ds.int_label_to_cat, "cuda:0", k=5, threshold=thresh), kaggle_pth)
+
 
 def main():
     from torchvision.models import efficientnet_b2
@@ -197,4 +254,4 @@ def main():
 
 
 if __name__ == "__main__":
-    inceptionResnetV1()
+    xception()
