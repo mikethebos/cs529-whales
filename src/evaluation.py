@@ -101,7 +101,7 @@ def get_arcface_predictions(train_outs: "list[tuple]",
         predictions[img_fname] = [""] * k
         for w in range(k):
             if new_whale_inserted or \
-                    avg_similarities[top_k_indices[p]] < threshold:
+                    avg_similarities[top_k_indices[p]] > threshold:
                 predictions[img_fname][w] = k_cat_labels[p]
                 p += 1
             else:
