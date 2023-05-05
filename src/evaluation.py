@@ -12,12 +12,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchvision.models import efficientnet_b2
 from tqdm import tqdm
-from pytorch_metric_learning.distances import CosineSimilarity
 
-from models.basic_twin_siamese import BasicTwinSiamese
-from utils.helpers import get_top_k
+from utils.helpers import get_top_k, freeze_effnet_weights
 from utils.transforms import test_alb_transform
 from utils.whale_dataset import TestWhaleDataset, WhaleDataset
 
@@ -84,12 +81,12 @@ def get_arcface_predictions(train_outs: "list[tuple]",
         predictions for a given image file from the test data
     """
     predictions = {}
-    cosine_similarity = CosineSimilarity()
+    cosine_similarity = nn.CosineSimilarity(dim=1, eps=1e-6)
     for img_fname in tqdm(test_outs.keys()):
         similarities = {}
         test_out = test_outs[img_fname]
         for train_out, label_idx in train_outs:
-            similarity = cosine_similarity(test_out, train_out)
+            similarity = cosine_similarity(test_out, train_out).item()
             similarities[label_idx] = similarities.get(label_idx, []) + [
                 similarity]
         # minimum average distance corresponds to top score
@@ -173,12 +170,12 @@ def create_submission_file(predictions: dict, save_path: str):
 
 
 def main(device: str):
+    from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
     torch.backends.cudnn.enabled = False
     print("Using device:", device)
 
     results_dir = "../results"
-    model_name = "effnetb2_twinsiamese256x256"
-
+    model_name = "effnetb0_arcface_freeze"
     # load dataset/dataloader
     image_height = 256
     image_width = 256
@@ -195,18 +192,21 @@ def main(device: str):
 
     # load model and trained weights
     weights_path = os.path.join(results_dir, model_name, "model_weights.pth")
-    n_features = 128
-    backbone = efficientnet_b2(num_classes=n_features)
-    model = BasicTwinSiamese(backbone)
+
+    embed_size = 128
+    in_feats = 1280
+    model = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
+    model = freeze_effnet_weights(model, in_feats, embed_size)
     model.to(device)
     model.load_state_dict(
         torch.load(weights_path, map_location=torch.device(device)))
 
     train_outs, test_outs = get_model_embeddings(model, train_loader,
-                                                 test_loader, device)
+                                                 test_loader, device,
+                                                 is_siam=False)
     # get predictions and create submission file
-    thresh = 2.0
-    predictions = get_siamese_predictions(train_outs, test_outs,
+    thresh = 0.95
+    predictions = get_arcface_predictions(train_outs, test_outs,
                                           train_ds.int_label_to_cat,
                                           threshold=thresh)
     submission_path = os.path.join(results_dir, model_name,
