@@ -60,9 +60,9 @@ def get_model_embeddings(model: torch.nn.Module, train_loader: DataLoader,
             image_filename = image_filename[0]  # gets wrapped by loader
             test_image = test_image.to(device)
             if is_siam:
-                out = model.forward_once(train_image)
+                out = model.forward_once(test_image)
             else:
-                out = model(train_image)  # arcface case
+                out = model(test_image)  # arcface case
             test_outs[image_filename] = out
 
     return train_outs, test_outs
