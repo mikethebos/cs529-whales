@@ -173,16 +173,9 @@ def plot_images_siamese(image1, image2, are_same):
 
 
 if __name__ == "__main__":
-    from src.utils.transforms import basic_transform
-
-    tf = basic_transform(256, 256, True)
-    ds = TwinSiameseDataset("../../data/train", "../../data/train.csv",
-                            transform=tf)
-    dl = torch.utils.data.DataLoader(ds,
-                                     shuffle=True,
-                                     batch_size=4)
-    # plot_img_siamese(im1, im2, same)
-    ex_batch = next(iter(dl))
-    im1s, im2s, same = ex_batch
-    for im1, im2, s in zip(im1s, im2s, same):
-        plot_images_siamese(im1, im2, s)
+    import numpy as np
+    ds = WhaleDataset("../../data/train", "../../data/train.csv")
+    n_classes = len(ds.int_label_to_cat)
+    scale = (2 ** 0.5) * np.log(n_classes - 1)
+    print(scale)
+    print(1 / n_classes)

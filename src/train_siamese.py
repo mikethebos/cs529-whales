@@ -152,7 +152,7 @@ def inceptionResnetV1():
     
     thresh = 0.01
     kaggle_pth = os.path.join(save_dir, "kaggle" + str(thresh) + ".csv")
-    from src.evaluation import get_regular_predictions, get_siamese_predictions, get_siamese_backbone_outs, create_submission_file
+    from src.evaluation import get_regular_predictions, get_siamese_predictions, get_model_embeddings, create_submission_file
     from src.utils.whale_dataset import TestWhaleDataset
     means = [140.1891, 147.7153, 156.5466]
     stds = [71.8512, 68.4338, 67.5585]
@@ -166,8 +166,9 @@ def inceptionResnetV1():
     train_loader = DataLoader(train_ds, batch_size=1, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=True)
     
-    train_outs, test_outs = get_siamese_backbone_outs(model, train_loader, test_loader, "cuda:0")
-    create_submission_file(get_siamese_predictions(train_outs, test_outs, ds.int_label_to_cat, "cuda:0", k=5, threshold=thresh), kaggle_pth)
+    train_outs, test_outs = get_model_embeddings(model, train_loader, test_loader, "cuda:0")
+    create_submission_file(get_siamese_predictions(train_outs, test_outs, ds.int_label_to_cat,
+                                                   k=5, threshold=thresh), kaggle_pth)
 
 
 def xception():
@@ -210,7 +211,7 @@ def xception():
     
     thresh = 0.01
     kaggle_pth = os.path.join(save_dir, "kaggle" + str(thresh) + ".csv")
-    from src.evaluation import get_regular_predictions, get_siamese_predictions, get_siamese_backbone_outs, create_submission_file
+    from src.evaluation import get_regular_predictions, get_siamese_predictions, get_model_embeddings, create_submission_file
     from src.utils.whale_dataset import TestWhaleDataset
     means = [140.1891, 147.7153, 156.5466]
     stds = [71.8512, 68.4338, 67.5585]
@@ -224,8 +225,9 @@ def xception():
     train_loader = DataLoader(train_ds, batch_size=1, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=True)
     
-    train_outs, test_outs = get_siamese_backbone_outs(model, train_loader, test_loader, "cuda:0")
-    create_submission_file(get_siamese_predictions(train_outs, test_outs, ds.int_label_to_cat, "cuda:0", k=5, threshold=thresh), kaggle_pth)
+    train_outs, test_outs = get_model_embeddings(model, train_loader, test_loader, "cuda:0")
+    create_submission_file(get_siamese_predictions(train_outs, test_outs, ds.int_label_to_cat,
+                                                   k=5, threshold=thresh), kaggle_pth)
 
 
 def main():
